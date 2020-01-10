@@ -1,25 +1,31 @@
 import tensorflow as tf
 
 import models.loss
+import models.callbacks
 
 defaults = {
     # Architecture related
-    'input_size' : 256,
-    'model_depth' : 3,
-    'model_width' : 16,
-    'bn_momentum' : 0.9,
-    'conv_activation' : tf.keras.activations.relu,
+    'img_size' : 256,
+    'depth' : 3,
+    'width' : 16,
+    'momentum' : 0.9,
+    'activation' : tf.keras.activations.relu,
+    'categories' : 3,
 
     # Compilation related
-    'learning_rate' : 0.01,
+    'lr' : 0.01,
     'optimizer' : tf.keras.optimizers.Adam,
     'loss' : models.loss.dice_coef_binary_loss,
+    # 'metrics' : models.metrics.defaults,
+    'callbacks' : models.callbacks.defaults,
 
     # Training related
-    'batch_size' : 32,
     'epochs' : 100,
+    'validation_freq' : 2,
+    'verbose' : 2,
 
     # Data-preprocessing
+    'batch_size' : 32,
     'scaling' : True,
     'cropping' : True,
     'flipping' : True,

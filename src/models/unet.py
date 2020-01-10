@@ -52,7 +52,7 @@ def decoder_unet(down_layers, input_layer=None, activation='relu', momentum=0.9)
     
     return y
 
-def model_segmentation(depth=3, width=8, img_size=None, categories=None, activation='relu', momentum=0.9):
+def model_seg(depth=3, width=8, img_size=None, categories=None, activation='relu', momentum=0.9):
     '''
     '''
     option_dict_conv = {'kernel_size': (3, 3), 'activation': activation, 'padding': 'same'}

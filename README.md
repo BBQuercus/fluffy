@@ -29,7 +29,9 @@ git clone -b v1 https://github.com/bbquercus/reimagined_disco
 cd reimagined_disco
 ```
 
-Once Docker is installed (see [here](https://docs.docker.com/install/)), run `docker build -t bbquercus:v1 .` in the directory containing a clone of this repository. Activate the local environment through `docker run -i -t bbquercus:v1 /bin/bash`.
+Once Docker is installed (see [here](https://docs.docker.com/install/)) and launched, run...
+`docker build -t bbquercus:v1 .`
+...in the directory containing a clone of this repository. Activate the local environment through `docker run -i -t bbquercus:v1 /bin/bash`.
 
 
 
