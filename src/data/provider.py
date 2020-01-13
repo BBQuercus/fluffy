@@ -1,33 +1,42 @@
 import numpy as np
 import scipy.ndimage as ndi
-import skimage
-
 from tensorflow import keras
 
 import data.augment
 
-def _add_borders(input_mask):
-    '''
-    '''
-    
-    mask = input_mask>0
 
+def _add_borders(input_mask, size):
+    '''
+    '''
+
+    mask = input_mask > 0
     for i in np.unique(input_mask):
-        curr_mask = np.where(input_mask==i, 1, 0)
-        mask_dilated = ndi.binary_dilation(curr_mask)
-        mask_eroded = ndi.binary_erosion(curr_mask)
+        curr_mask = np.where(input_mask == i, 1, 0)
+        mask_dilated = ndi.binary_dilation(curr_mask, iterations=size)
+        mask_eroded = ndi.binary_erosion(curr_mask, iterations=size)
         border = np.logical_xor(mask_dilated, mask_eroded)
         mask = np.where(border, 2, mask)
 
     return mask
 
+
 def _normalize_image(input_image, bit_depth):
     return input_image.astype(np.float32) / ((2**bit_depth)-1.)
 
-def load_train_seg(input_image, input_mask, img_size, bit_depth):
+
+def _grayscale_to_rgb(input_image):
+    return np.stack((input_image,)*3, axis=-1)
+
+
+def load_train_seg(input_image, input_mask, **kwargs):
     '''
     '''
-    assert input_image == np.ndarray and input_mask == np.ndarray
+    img_size = kwargs.get('img_size', 224)
+    bit_depth = kwargs.get('bit_depth', 16)
+    border_size = kwargs.get('border_size', 2)
+    convert_to_rgb = kwargs.get('convert_to_rgb', True)
+
+    assert type(input_image) == np.ndarray and type(input_mask) == np.ndarray
     assert input_image.shape[:2] == input_mask.shape[:2]
     assert input_image.shape[0] >= img_size
     assert input_image.shape[1] >= img_size
@@ -43,73 +52,86 @@ def load_train_seg(input_image, input_mask, img_size, bit_depth):
 
     # Normalization
     input_image = _normalize_image(input_image, bit_depth)
+    if convert_to_rgb:
+        input_image = _grayscale_to_rgb(input_image)
 
     # Add border to mask
-    input_mask = _add_borders(input_mask)
+    input_mask = _add_borders(input_mask, border_size)
     input_mask = keras.utils.to_categorical(input_mask)
-    
+
     return input_image, input_mask
 
-def train_generator_seg(npy_images, npy_masks, img_size, bit_depth, batch_size):
+
+def train_generator_seg(npy_images, npy_masks, **kwargs):
     '''
     '''
-    assert len(list_images)!=0
-    assert len(list_images)==len(list_masks)
-    assert list_images[0].shape[3]==1, 'Images not grayscale'
+    assert len(npy_images) != 0
+    assert len(npy_masks) == len(npy_masks)
+    for img in npy_images:
+        assert img.ndim == 2, 'Images not grayscale'
+
+    batch_size = kwargs.get('batch_size', 16)
 
     while True:
-        images = np.zeros((batch_size, img_size, img_size, 1))
-        masks = np.zeros((batch_size, img_size, img_size, 3))
+        images = []
+        masks = []
+        for _ in range(batch_size):
+            ix = np.random.randint(len(npy_images))
+            image, mask = load_train_seg(npy_images[ix], npy_masks[ix], **kwargs)
+            images.append(image)
+            masks.append(mask)
 
-        for i in range(batch_size): 
-            ix = np.random.randint(len(list_images))
-            image, mask = load_train_seg(list_images[ix], list_masks[ix], img_size, bit_depth)
-            images[i,:,:,0] = image
-            masks[i,:,:,:] = mask
+    yield np.array(images), np.array(masks)
 
-    yield(images, masks)
 
-def load_val_seg(input_image, input_mask, img_size, bit_depth):
+def load_val_seg(input_image, input_mask, **kwargs):
     '''
     '''
-    assert input_image == np.ndarray and input_mask == np.ndarray
+    img_size = kwargs.get('img_size', 224)
+    bit_depth = kwargs.get('bit_depth', 16)
+    border_size = kwargs.get('border_size', 2)
+    convert_to_rgb = kwargs.get('convert_to_rgb', True)
+
+    assert type(input_image) == np.ndarray and type(input_mask) == np.ndarray
     assert input_image.shape[:2] == input_mask.shape[:2]
     assert input_image.shape[0] >= img_size
     assert input_image.shape[1] >= img_size
 
     # Cropping
-    one = np.random.randint(low=0, high=input_image.shape[0]-img_size) if input_image.shape[0]>img_size else 0
-    two = np.random.randint(low=0, high=input_image.shape[1]-img_size) if input_image.shape[1]>img_size else 0
+    one = np.random.randint(low=0, high=input_image.shape[0]-img_size) if input_image.shape[0] > img_size else 0
+    two = np.random.randint(low=0, high=input_image.shape[1]-img_size) if input_image.shape[1] > img_size else 0
     input_image = input_image[one:one+img_size, two:two+img_size]
     input_mask = input_mask[one:one+img_size, two:two+img_size]
 
-    # Augmentation
-    # input_image, input_mask = data.augment
-
     # Normalization
     input_image = _normalize_image(input_image, bit_depth)
+    if convert_to_rgb:
+        input_image = _grayscale_to_rgb(input_image)
 
     # Add border to mask
-    input_mask = _add_borders(input_mask)
+    input_mask = _add_borders(input_mask, border_size)
     input_mask = keras.utils.to_categorical(input_mask)
     
     return input_image, input_mask
 
-def val_generator_seg(npy_images, npy_masks, img_size, bit_depth):
+
+def val_generator_seg(npy_images, npy_masks, **kwargs):
     '''
     '''
-    assert len(list_images)!=0
-    assert len(list_images)==len(list_masks)
-    assert list_images[0].shape[3]==1, 'Images not grayscale'
+    assert len(npy_images) != 0
+    assert len(npy_masks) == len(npy_masks)
+    for img in npy_images:
+        assert img.ndim == 2, 'Images not grayscale'
+
+    batch_size = kwargs.get('batch_size', 16)
 
     while True:
-        images = np.zeros((batch_size, img_size, img_size, 1))
-        masks = np.zeros((batch_size, img_size, img_size, 3))
+        images = []
+        masks = []
+        for _ in range(batch_size):
+            ix = np.random.randint(len(npy_images))
+            image, mask = load_val_seg(npy_images[ix], npy_masks[ix], **kwargs)
+            images.append(image)
+            masks.append(mask)
 
-        for i in range(batch_size): 
-            ix = np.random.randint(len(list_images))
-            image, mask = load_val_seg(list_images[ix], list_masks[ix], img_size, bit_depth)
-            images[i,:,:,0] = image
-            masks[i,:,:,:] = mask
-
-    yield(images, masks)
+    yield np.array(images), np.array(masks)

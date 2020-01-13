@@ -1,75 +1,70 @@
 import math
-import tensorflow as tf
 from tensorflow import keras
 
-def encoder_unet(input_layer, depth=3, width=8, activation='relu', momentum=0.9):
+
+def encoder_unet(input_layer, depth=3, width=16):
     '''
     '''
     assert (width & (width - 1)) == 0, 'Must be power of 2'
 
-    option_dict_conv = {'kernel_size': (3, 3), 'activation': activation, 'padding': 'same'}
-    option_dict_bn = {'axis': -1, 'momentum': momentum}
-
+    option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
     initial_width = int(math.log(width, 2))
 
+    x = input_layer
     y = []
     for i in range(depth):
         w = 2**(i+initial_width)
-        if i == 0:
-            x = keras.layers.Conv2D(w, **option_dict_conv) (input_layer)
-        else:
-            x = keras.layers.Conv2D(w, **option_dict_conv) (x)
-        x = keras.layers.BatchNormalization(**option_dict_bn) (x)
-        x = keras.layers.Conv2D(w, **option_dict_conv) (x)
-        x = keras.layers.BatchNormalization(**option_dict_bn) (x)
-        x = keras.layers.MaxPool2D((2, 2)) (x)
+        x = keras.layers.Conv2D(w, **option_dict_conv)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Conv2D(w, **option_dict_conv)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.MaxPool2D((2, 2))(x)
         y.append(x)
-    
+
     return y
 
-def decoder_unet(down_layers, input_layer=None, activation='relu', momentum=0.9):
+
+def decoder_unet(down_layers):
     '''
     '''
 
-    option_dict_conv = {'kernel_size': (3, 3), 'activation': activation, 'padding': 'same'}
-    option_dict_bn = {'axis': -1, 'momentum': momentum}
+    option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
 
-    input_layer = down_layers[-1] if not input_layer else input_layer
+    x = down_layers[-1]
     y = []
-
-    for i, d in enumerate(down_layers[::-1]):
+    for d in down_layers[::-1]:
         w = d.shape[-1]
-        if i == 0:
-            x = tf.keras.layers.Conv2D(w, **option_dict_conv) (input_layer)
-        else:
-            x = tf.keras.layers.Conv2D(w, **option_dict_conv) (x)
-        x = tf.keras.layers.BatchNormalization(**option_dict_bn) (x)
-        x = tf.keras.layers.Conv2D(w, **option_dict_conv) (x)
-        x = tf.keras.layers.BatchNormalization(**option_dict_bn) (x)
-        x = tf.keras.layers.UpSampling2D() (x)
-        x = tf.keras.layers.concatenate([x, d], axis=3)
+        x = keras.layers.Conv2D(w, **option_dict_conv)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Conv2D(w, **option_dict_conv)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.concatenate([x, d])
+        x = keras.layers.UpSampling2D()(x)
         y.append(x)
-    
+
     return y
 
-def model_seg(depth=3, width=8, img_size=None, categories=None, activation='relu', momentum=0.9):
+
+def model_seg(**kwargs):
     '''
     '''
-    option_dict_conv = {'kernel_size': (3, 3), 'activation': activation, 'padding': 'same'}
+    img_size = kwargs.get('img_size', 256)
+    depth = kwargs.get('depth', 3)
+    n_classes = kwargs.get('n_classes', 3)
 
-    x = tf.keras.layers.Input((img_size, img_size, 1))
+    x = keras.layers.Input((img_size, img_size, 1))
 
-    down = encoder_unet(x, depth=depth, width=width)
+    down = encoder_unet(x, depth=depth)
     up = decoder_unet(down)
 
-    y = tf.keras.layers.Conv2D(8, **option_dict_conv) (up[-1])
-    y = tf.keras.layers.Conv2D(8, **option_dict_conv) (y)
+    option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
+    filters = n_classes if n_classes else 1
+    activation = 'softmax' if n_classes else 'sigmoid'
 
-    filters = categories if categories else 1
-    activation = 'softmax' if categories else 'sigmoid'
+    y = keras.layers.Conv2D(8, **option_dict_conv)(up[-1])
+    y = keras.layers.Conv2D(8, **option_dict_conv)(y)
+    y = keras.layers.Conv2D(filters, (1, 1), activation=activation)(y)
 
-    y = tf.keras.layers.Conv2D(filters, (1, 1), activation=activation) (y)
-
-    model = tf.keras.models.Model(inputs=[x], outputs=[y])
+    model = keras.models.Model(inputs=[x], outputs=[y])
 
     return model
