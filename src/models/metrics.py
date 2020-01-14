@@ -1,18 +1,21 @@
+'''
+Many metrics below were adapted from Dominik Müller,
+his repo can be found @frankkramer-lab/MIScnn.
+Active contour loss was adapted from @xuuuuuuchen/Active-Contour-Loss.
+'''
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import backend as K
 
-'''
-Many metrics below were adapted from Dominik Müller,
-his repo can be found @frankkramer-lab/MIScnn.
-'''
-
 
 def weighted_crossentropy(y_true, y_pred, weights=[1., 1., 10.]):
     '''
-    Weighted version of tf.keras.objectives.categorical_crossentropy
+    Weighted version of tf.keras.objectives.categorical_crossentropy.
     '''
+    # TODO assert that weights shape is correct?
+
     unweighted_losses = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_true, logits=y_pred)
 
     class_weights = tf.constant([[[weights]]])
@@ -23,7 +26,8 @@ def weighted_crossentropy(y_true, y_pred, weights=[1., 1., 10.]):
     return loss
 
 
-def identify_axis(shape):
+def _identify_axis(shape):
+    ''' Returns the axes to perform computations on (2D / 3D). '''
     if len(shape) == 5:
         return [1, 2, 3]
     elif len(shape) == 4:
@@ -33,10 +37,12 @@ def identify_axis(shape):
 
 
 def dice_weighted(weights):
+    '''
+    '''
     weights = K.variable(weights)
 
     def weighted_loss(y_true, y_pred, ep=1e-08):
-        axis = identify_axis(y_true.get_shape())
+        axis = _identify_axis(y_true.get_shape())
         intersection = y_true * y_pred
         intersection = K.sum(intersection, axis=axis)
         y_true = K.sum(y_true, axis=axis)
@@ -62,7 +68,10 @@ def dice_coefficient_loss(y_true, y_pred):
 
 
 def dice_soft(y_true, y_pred, ep=1e-08):
-    axis = identify_axis(y_true.get_shape())
+    '''
+    Soft dice loss.
+    '''
+    axis = _identify_axis(y_true.get_shape())
 
     intersection = y_true * y_pred
     intersection = K.sum(intersection, axis=axis)
@@ -79,6 +88,7 @@ def dice_soft_loss(y_true, y_pred):
 
 
 def dice_crossentropy(y_true, y_pred):
+    ''' Combines soft dice loss and categorical crossentropy into one loss. '''
     dice = dice_soft_loss(y_true, y_pred)
     crossentropy = K.categorical_crossentropy(y_true, y_pred)
     crossentropy = K.mean(crossentropy)
@@ -95,7 +105,7 @@ def tversky_loss(y_true, y_pred, ep=1e-08):
     alpha = 0.5
     beta = 0.5
     # Calculate Tversky per class
-    axis = identify_axis(y_true.get_shape())
+    axis = _identify_axis(y_true.get_shape())
     tp = K.sum(y_true * y_pred, axis=axis)
     fn = K.sum(y_true * (1-y_pred), axis=axis)
     fp = K.sum((1-y_true) * y_pred, axis=axis)
@@ -107,6 +117,7 @@ def tversky_loss(y_true, y_pred, ep=1e-08):
 
 
 def tversky_crossentropy(y_truth, y_pred):
+    ''' Combines Tversky loss and categorical crossentropy into one loss. '''
     tversky = tversky_loss(y_truth, y_pred)
     crossentropy = K.categorical_crossentropy(y_truth, y_pred)
     crossentropy = K.mean(crossentropy)
@@ -117,7 +128,6 @@ def active_contour_loss(y_true, y_pred):
     '''
     Active contour loss from the arxiv paper "Learning Active Contour Models
     for Medical Image Segmentation" by Chen, Xu, et al.
-    Awesome simple github repo at @xuuuuuuchen/Active-Contour-Loss
     '''
     # Length term – horizontal / vertical directions
     x = y_pred[:, :, 1:, :] - y_pred[:, :, :-1, :]
@@ -143,8 +153,7 @@ def active_contour_loss(y_true, y_pred):
 
 
 def defaults():
-    '''
-    '''
+    ''' Returns list of metrics used by default. '''
     return [
         # TODO fix magic number
         keras.metrics.MeanIoU(num_classes=3),

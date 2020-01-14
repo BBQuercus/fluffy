@@ -1,11 +1,10 @@
 from tensorflow import keras
 
-pretrained_url = "https://github.com/fchollet/deep-learning-models/" \
-                    "releases/download/v0.2/" \
-                    "resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5"
+# TODO remove naming of layers
 
 
 def one_side_pad(x):
+    ''' Adds Padding to ensure proper size. '''
     x = keras.layers.ZeroPadding2D((1, 1))(x)
     x = keras.layers.Lambda(lambda x: x[:, :-1, :-1, :])(x)
     return x
@@ -14,14 +13,15 @@ def one_side_pad(x):
 def identity_block(input_layer, kernel_size, filters, stage, block):
     '''
     The identity block is the block that has no conv layer at shortcut.
-    # Arguments
-        input_layer: input tensor
-        kernel_size: defualt 3, the kernel size of middle conv layer at
-                     main path
-        filters: list of integers, the filterss of 3 conv layer at main path
-        stage: integer, current stage label, used for generating layer names
-        block: 'a','b'..., current block label, used for generating layer names
-    # Returns
+
+    Args:
+        input_layer (tf.keras.layers): Input tensor.
+        kernel_size (int): Kernel size of middle conv layer at main path.
+        filters (list): List of ints, the filters of 3 conv layer at main path.
+        stage (int): Current stage label, used for generating layer names.
+        block (str): Current block label, used for generating layer names.
+
+    Returns:
         Output tensor for the block.
     '''
     filters1, filters2, filters3 = filters
@@ -52,18 +52,17 @@ def identity_block(input_layer, kernel_size, filters, stage, block):
 
 def conv_block(input_layer, kernel_size, filters, stage, block, strides=(2, 2)):
     '''
-    conv_block is the block that has a conv layer at shortcut
-    # Arguments
-        input_layer: input tensor
-        kernel_size: defualt 3, the kernel size of middle conv layer at
-                     main path
-        filters: list of integers, the filterss of 3 conv layer at main path
-        stage: integer, current stage label, used for generating layer names
-        block: 'a','b'..., current block label, used for generating layer names
-    # Returns
+    Conv_block is the block that has a conv layer at shortcut.
+
+    Args:
+        input_layer (tf.keras.layers): Input tensor.
+        kernel_size (int): Kernel size of middle conv layer at main path.
+        filters (list): list of ints, the filters of 3 conv layer at main path.
+        stage (int): Current stage label, used for generating layer names.
+        block (str): Current block label, used for generating layer names.
+
+    Returns:
         Output tensor for the block.
-    Note that from stage 3, the first conv layer at main path is with
-    strides=(2,2) and the shortcut should have strides=(2,2) as well
     '''
     filters1, filters2, filters3 = filters
 
@@ -96,8 +95,21 @@ def conv_block(input_layer, kernel_size, filters, stage, block, strides=(2, 2)):
     return x
 
 
-def resnet50_encoder(img_size=224, pretrained='imagenet', input_layer=None):
+def resnet50_encoder(img_size=224, pretrained=True):
     '''
+    Loads a pretrained Resnet50 layers without top (softmax classification).
+
+    Args:
+        img_size (int): Size of input data.
+        pretrained (bool): If True, loads weights from imagenet,
+            if False returns normal layers.
+
+    Returns:
+        img_input: Input tensor.
+        [skips]: List of "down" layers to be used as skip connections.
+
+    Note that from stage 3, the first conv layer at main path is with
+    strides=(2,2) and the shortcut should have strides=(2,2) as well.
     '''
 
     assert img_size % 32 == 0
@@ -142,9 +154,15 @@ def resnet50_encoder(img_size=224, pretrained='imagenet', input_layer=None):
         (7, 7), name='avg_pool')(x)
     # f6 = x
 
-    if pretrained == 'imagenet':
+    if pretrained:
+        pretrained_url = "https://github.com/fchollet/deep-learning-models/" \
+                            "releases/download/v0.2/" \
+                            "resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5"
+        # TODO automatically load from file, not url
         weights_path = keras.utils.get_file(
-            pretrained_url.split("/")[-1], pretrained_url)
+            pretrained_url.split("/")[-1],
+            pretrained_url
+        )
         keras.models.Model(img_input, x).load_weights(weights_path)
 
     return img_input, [f1, f2, f3, f4, f5]

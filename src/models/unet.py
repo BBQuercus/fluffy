@@ -4,6 +4,16 @@ from tensorflow import keras
 
 def encoder_unet(input_layer, depth=3, width=16):
     '''
+    Encoder side of UNet returning the "down" layers.
+
+    Args:
+        input_layer (tf.keras.layers): Layer to start with.
+        depth (int): Number of conv / maxpool blocks.
+        width (int): Starting number of filters, doubles with
+            each step into the depth.
+
+    Returns:
+        y (list): tf.keras.layers of "down" layers.
     '''
     assert (width & (width - 1)) == 0, 'Must be power of 2'
 
@@ -26,6 +36,15 @@ def encoder_unet(input_layer, depth=3, width=16):
 
 def decoder_unet(down_layers):
     '''
+    Decoder side of UNet returning the "up" layers.
+    Automatically adjusts sizes to match down layers.
+
+    Args:
+        down_layers (list of. tf.keras.layers): Layers yielded
+            from function encoder_unet.
+
+    Returns:
+        y (list): tf.keras.layers of "up" layers.
     '''
 
     option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
@@ -47,6 +66,16 @@ def decoder_unet(down_layers):
 
 def model_seg(**kwargs):
     '''
+    Builds a full UNet model for segmentation. Not yet compiled.
+
+    Args:
+        ––– **kwargs:
+        img_size (int): Size of input images.
+        depth (int): Number of conv / maxpool blocks in backbone.
+        n_classes (int): Classes used for segmentation.
+
+    Returns:
+        model (tf.keras.models.Model): UNet model for semantic segmentation.
     '''
     img_size = kwargs.get('img_size', 256)
     depth = kwargs.get('depth', 3)
@@ -58,11 +87,11 @@ def model_seg(**kwargs):
     up = decoder_unet(down)
 
     option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
-    filters = n_classes if n_classes else 1
-    activation = 'softmax' if n_classes else 'sigmoid'
-
     y = keras.layers.Conv2D(8, **option_dict_conv)(up[-1])
     y = keras.layers.Conv2D(8, **option_dict_conv)(y)
+
+    filters = n_classes if n_classes else 1
+    activation = 'softmax' if n_classes else 'sigmoid'
     y = keras.layers.Conv2D(filters, (1, 1), activation=activation)(y)
 
     model = keras.models.Model(inputs=[x], outputs=[y])

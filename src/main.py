@@ -13,9 +13,20 @@ import config
 
 
 class ConvertImagesNpy(luigi.Task):
+    '''
+    Converts images and masks for training/validation and testing
+    into numpy files for easier access later on. Does not do any
+    preprocessing or file manipulation.
 
-    dir_in = luigi.parameter.Parameter(default='../data/raw') 
-    dir_out = luigi.parameter.Parameter(default='../data/processed') 
+    Args:
+        dir_in (dir): Path to data files in the following format.
+            Brackets denote multiple possibilties.
+            dir_in/(train_val, test)/(images, masks)/(...jpg/tif/...)
+        dir_out (dir): Path to where numpy files should be saved.
+    '''
+
+    dir_in = luigi.parameter.Parameter(default='../data/raw')
+    dir_out = luigi.parameter.Parameter(default='../data/processed')
 
     def output(self):
         return {
@@ -50,6 +61,16 @@ class ConvertImagesNpy(luigi.Task):
 
 
 class TrainOneModel(luigi.Task):
+    '''
+    Trains one model from start to end including data preprocessing,
+    model generation, validation, training. Does not include
+    hyperparameter tuning, crossvalidation, score reporting.
+
+    Args:
+        config (dict): Dictionary containing all configurations.
+        uuid (str): "Unique User ID" or unique identifier for naming.
+        dir_out (dir): Path where model and logs should be saved.
+    '''
 
     config = luigi.parameter.DictParameter(default=config.defaults)
     uuid = luigi.parameter.Parameter(default=str(uuid.uuid4()))
@@ -81,7 +102,7 @@ class TrainOneModel(luigi.Task):
             'bit_depth': self.config['bit_depth'],
             'batch_size': self.config['batch_size'],
             'border_size': self.config['border_size'],
-            'convert_to_RGB': self.config['convert_to_RGB'],
+            'convert_to_rgb': self.config['convert_to_rgb'],
             'scaling': self.config['scaling'],
             'cropping': self.config['cropping'],
             'flipping': self.config['flipping'],
@@ -97,15 +118,15 @@ class TrainOneModel(luigi.Task):
         config_model = {
             'img_size': self.config['img_size'],
             'depth': self.config['depth'],
-            'categories': self.config['categories'],
+            'n_classes': self.config['n_classes'],
         }
-        model = models.unet.model_seg(**config_model)
-        print(model.summary())
-        model = models.resunet.model_seg(**config_model)
-        print(model.summary())
+        if self.config['resnet']:
+            model = models.resunet.model_seg(**config_model)
+        else:
+            model = models.unet.model_seg(**config_model)
 
         # Compile model
-        # TODO pass functions from config file?
+        # TODO pass functions from config file
         config_compile = {
             'optimizer': tf.keras.optimizers.Adam(self.config['lr']),
             'loss': models.metrics.dice_coefficient_loss,
@@ -128,7 +149,7 @@ class TrainOneModel(luigi.Task):
             'validation_freq': self.config['validation_freq'],
             'verbose': self.config['verbose']
         }
-        # model.fit(**config_training)
+        model.fit(**config_training)
 
         # Save final configs
         config_final = {
@@ -139,6 +160,10 @@ class TrainOneModel(luigi.Task):
         }
         data.dirtools.dict_to_csv(config_final, self.output()['config'].path)
 
+
+# class CrossValidation(luigi.Task):
+
+#     def
 
 # def cross_validate(session, split_size=5):
 #     results = []
