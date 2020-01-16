@@ -4,20 +4,21 @@ defaults = {
     'img_size': 256,
     'depth': 4,
     'width': 16,
-    'n_classes': 1,  # Binary: 1, Multiclass: Background + ...
+    'classes': True,
 
     # Compilation related
     'lr': 0.01,
 
     # Training related
-    'epochs': 1,
+    'epochs': 150,
     'validation_freq': 1,
-    'batch_size': 1,
+    'batch_size': 16,
 
     # Data-augmentation
     # Border (if n_classes == 1 not considered)
-    # 'border_size': 2,
-    # 'touching_only': True,
+    'border': True,
+    'border_size': 2,
+    'touching_only': True,
     # 'convert_to_rgb': False,
     'bit_depth': 16,
 

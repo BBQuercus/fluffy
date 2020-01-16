@@ -22,7 +22,7 @@ def defaults(path_model, path_csv, path_tb):
         keras.callbacks.ModelCheckpoint(path_model, save_best_only=True),
         keras.callbacks.CSVLogger(path_csv),
         keras.callbacks.TensorBoard(path_tb),
-        keras.callbacks.EarlyStopping(patience=5)
+        keras.callbacks.EarlyStopping(patience=20)
     ]
 
 

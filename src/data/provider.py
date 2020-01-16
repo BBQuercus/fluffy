@@ -19,10 +19,11 @@ def _add_borders(input_mask, size, touching_only=False):
         mask (np.array): Mask containing borders.
     '''
 
-    if size < 1:
-        return input_mask
-
     mask = input_mask > 0
+
+    if size < 1:
+        return mask
+
     borders = []
     for i in np.unique(input_mask):
         curr_mask = np.where(input_mask == i, 1, 0)
@@ -31,12 +32,11 @@ def _add_borders(input_mask, size, touching_only=False):
         curr_border = np.logical_xor(mask_dilated, mask_eroded)
         borders.append(curr_border)
 
-    mask = np.sum(borders[1:], axis=0)
+    borders = np.sum(borders[1:], axis=0)
+    cutoff = 1 if touching_only else 0
+    mask = np.where(borders>cutoff, 2, mask)
 
-    if touching_only:
-        return mask > 1
-    else:
-        return mask > 0
+    return mask
 
 
 def _normalize_image(input_image, bit_depth):
@@ -71,6 +71,9 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     '''
     img_size = kwargs.get('img_size', 256)
     bit_depth = kwargs.get('bit_depth', 16)
+    border = kwargs.get('border', True)
+    border_size = kwargs.get('border_size', 2)
+    touching_only = kwargs.get('touching_only', False)
 
     assert type(input_image) == np.ndarray and type(input_mask) == np.ndarray
     assert input_image.shape[:2] == input_mask.shape[:2]
@@ -92,12 +95,12 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
 
     # Data augmentation for training
     # if training:
-    #  data.augment()
+    #     input_image, input_mask = data.augment(defaults, **kwargs)
 
     # Add border to mask
-    # if border:
-    # input_mask = _add_borders(input_mask, border_size)
-    # input_mask = keras.utils.to_categorical(input_mask)
+    if border:
+        input_mask = _add_borders(input_mask, border_size, touching_only)
+        input_mask = keras.utils.to_categorical(input_mask)
 
     return input_image, input_mask
 
@@ -130,13 +133,13 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
 
     while True:
         images = np.zeros((batch_size, img_size, img_size, 1))
-        masks = np.zeros((batch_size, img_size, img_size, 1))
+        masks = np.zeros((batch_size, img_size, img_size, 3))
 
         for i in range(batch_size):
             ix = np.random.randint(len(npy_images))
             image, mask = load_seg(npy_images[ix], npy_masks[ix], training, **kwargs)
 
             images[i, :, :, 0] = image
-            masks[i, :, :, 0] = mask
+            masks[i, :, :, :] = mask
 
         yield images, masks

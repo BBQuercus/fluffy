@@ -1,5 +1,6 @@
+import itertools
+import datetime
 import luigi
-import uuid
 import numpy as np
 import tensorflow as tf
 
@@ -73,7 +74,7 @@ class TrainOneModel(luigi.Task):
     '''
 
     config = luigi.parameter.DictParameter(default=config.defaults)
-    uuid = luigi.parameter.Parameter(default=str(uuid.uuid4()))
+    uuid = luigi.parameter.Parameter(default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     dir_out = luigi.parameter.Parameter(default='../models')
 
     def requires(self):
@@ -86,7 +87,7 @@ class TrainOneModel(luigi.Task):
             'model_best': luigi.LocalTarget(f'{self.dir_out}/models/{self.uuid}.h5'),
             'model_final': luigi.LocalTarget(f'{self.dir_out}/models/{self.uuid}_final.h5'),
             'history': luigi.LocalTarget(f'{self.dir_out}/history/{self.uuid}.csv'),
-            'tensorboard': luigi.LocalTarget(f'{self.dir_out}/tensorboard')
+            'tensorboard': luigi.LocalTarget(f'{self.dir_out}/tensorboard/{self.uuid}/')
         }
 
     def run(self):
@@ -111,7 +112,7 @@ class TrainOneModel(luigi.Task):
             'img_size': self.config['img_size'],
             'depth': self.config['depth'],
             'width': self.config['width'],
-            'n_classes': self.config['n_classes'],
+            'classes': self.config['classes'],
         }
         model = models.unet.model_seg(**config_model)
         tf.keras.utils.plot_model(model, to_file=self.output()['graph'].path, show_shapes=True)
@@ -119,10 +120,11 @@ class TrainOneModel(luigi.Task):
 
         # Compile model
         # TODO assert metrics from models.metrics
+        # TODO auto add categorical / binary metrics?
         config_compile = {
             'optimizer': tf.keras.optimizers.Adam(self.config['lr']),
-            'loss': tf.keras.losses.BinaryCrossentropy(),
-            'metrics': [tf.keras.metrics.BinaryAccuracy()],
+            'loss': tf.keras.losses.CategoricalCrossentropy(),
+            'metrics': [tf.keras.metrics.CategoricalAccuracy()],
         }
         model.compile(**config_compile)
 
@@ -171,6 +173,31 @@ class HParameterOptimizer(luigi.WrapperTask):
             uuid = 'hmm'  # TODO
 
             yield TrainOneModel(config=self.config, uuid=uuid)
+
+
+def main():
+    hparam_lr = [0.1, 0.01, 0.001, 0.0001]
+    hparam_width = [4, 16, 64]
+    hparam_depth = [1, 2, 4]
+
+    for lr, width, depth in itertools.product(
+            hparam_lr, hparam_width, hparam_depth):
+
+        config_new = {
+            'lr': lr,
+            'width': width,
+            'depth': depth
+        }
+        config_curr = config.defaults
+        config_curr.update(config_new)
+
+        uuid = f'lr-{lr}_w-{width}_d-{depth}'
+
+        luigi.build([TrainOneModel(config_curr, uuid)], local_scheduler=True)
+
+
+if __name__ == "__main__":
+    main()
 
 
 # class CrossValidation(luigi.Task):

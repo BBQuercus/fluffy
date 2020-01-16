@@ -72,7 +72,9 @@ def model_seg(**kwargs):
         ––– **kwargs:
         img_size (int): Size of input images.
         depth (int): Number of conv / maxpool blocks in backbone.
-        n_classes (int): Classes used for segmentation.
+        width (int): Starting number of filters of the down layers.
+            Doubles with each depth.
+        classes (bool): If classes used for segmentation (BG, FG, Border).
 
     Returns:
         model (tf.keras.models.Model): UNet model for semantic segmentation.
@@ -80,19 +82,19 @@ def model_seg(**kwargs):
     img_size = kwargs.get('img_size', 256)
     depth = kwargs.get('depth', 3)
     width = kwargs.get('width', 16)
-    n_classes = kwargs.get('n_classes', 3)
+    classes = kwargs.get('classes', 3)
 
     x = keras.layers.Input((img_size, img_size, 1))
 
     down = encoder_unet(x, depth=depth, width=width)
     up = decoder_unet(down)
 
-    option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}
-    y = keras.layers.Conv2D(8, **option_dict_conv)(up[-1])
-    y = keras.layers.Conv2D(8, **option_dict_conv)(y)
+    option_dict_conv = {'kernel_size': (3, 3), 'padding': 'same'}
+    y = keras.layers.Conv2D(width, **option_dict_conv)(up[-1])
+    y = keras.layers.Conv2D(width, **option_dict_conv)(y)
 
-    filters = n_classes if n_classes else 1
-    activation = 'softmax' if n_classes else 'sigmoid'
+    filters = 3 if classes else 1
+    activation = 'softmax' if classes else 'sigmoid'
     y = keras.layers.Conv2D(filters, (1, 1), activation=activation)(y)
 
     model = keras.models.Model(inputs=[x], outputs=[y])
