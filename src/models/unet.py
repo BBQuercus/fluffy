@@ -79,11 +79,12 @@ def model_seg(**kwargs):
     '''
     img_size = kwargs.get('img_size', 256)
     depth = kwargs.get('depth', 3)
+    width = kwargs.get('width', 16)
     n_classes = kwargs.get('n_classes', 3)
 
     x = keras.layers.Input((img_size, img_size, 1))
 
-    down = encoder_unet(x, depth=depth)
+    down = encoder_unet(x, depth=depth, width=width)
     up = decoder_unet(down)
 
     option_dict_conv = {'kernel_size': (3, 3), 'activation': 'relu', 'padding': 'same'}

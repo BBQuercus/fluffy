@@ -1,28 +1,31 @@
 defaults = {
     # Architecture related
-    'resnet': True,
+    'resnet': False,
     'img_size': 256,
-    'depth': 3,
-    'n_classes': 3,
+    'depth': 4,
+    'width': 16,
+    'n_classes': 1,  # Binary: 1, Multiclass: Background + ...
 
     # Compilation related
     'lr': 0.01,
 
     # Training related
-    'epochs': 100,
-    'validation_freq': 2,
-    'verbose': 0,
+    'epochs': 1,
+    'validation_freq': 1,
+    'batch_size': 1,
 
-    # Data-preprocessing
+    # Data-augmentation
+    # Border (if n_classes == 1 not considered)
+    # 'border_size': 2,
+    # 'touching_only': True,
+    # 'convert_to_rgb': False,
     'bit_depth': 16,
-    'batch_size': 32,
-    'border_size': 2,
-    'convert_to_rgb': False,
-    'scaling': True,
-    'cropping': True,
-    'flipping': True,
-    'padding': True,
-    'rotation': True,
-    'brightness': True,
-    'contrast': True,
+
+    # 'scaling': True,
+    # 'cropping': True,
+    # 'flipping': True,
+    # 'padding': True,
+    # 'rotation': True,
+    # 'brightness': True,
+    # 'contrast': True,
 }

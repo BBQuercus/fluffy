@@ -83,73 +83,65 @@ class TrainOneModel(luigi.Task):
         return {
             'config': luigi.LocalTarget(f'{self.dir_out}/config/{self.uuid}.csv'),
             'graph': luigi.LocalTarget(f'{self.dir_out}/graph/{self.uuid}.png'),
-            'model': luigi.LocalTarget(f'{self.dir_out}/models/{self.uuid}.h5'),
+            'model_best': luigi.LocalTarget(f'{self.dir_out}/models/{self.uuid}.h5'),
+            'model_final': luigi.LocalTarget(f'{self.dir_out}/models/{self.uuid}_final.h5'),
             'history': luigi.LocalTarget(f'{self.dir_out}/history/{self.uuid}.csv'),
-            'tensorboard': luigi.LocalTarget(f'{self.dir_out}/tensorboard')  # uuid subfolder?
+            'tensorboard': luigi.LocalTarget(f'{self.dir_out}/tensorboard')
         }
 
     def run(self):
 
         # Import data
-        train_images = np.load(self.requires().output()['train_images'].path, allow_pickle=True)
-        train_masks = np.load(self.requires().output()['train_masks'].path, allow_pickle=True)
-        val_images = np.load(self.requires().output()['val_images'].path, allow_pickle=True)
-        val_masks = np.load(self.requires().output()['val_masks'].path, allow_pickle=True)
+        train_images = np.load(self.input()['train_images'].path, allow_pickle=True)
+        train_masks = np.load(self.input()['train_masks'].path, allow_pickle=True)
+        val_images = np.load(self.input()['val_images'].path, allow_pickle=True)
+        val_masks = np.load(self.input()['val_masks'].path, allow_pickle=True)
 
-        # Preprocess data
+        # Prepare generators
         config_preprocess = {
             'img_size': self.config['img_size'],
             'bit_depth': self.config['bit_depth'],
             'batch_size': self.config['batch_size'],
-            'border_size': self.config['border_size'],
-            'convert_to_rgb': self.config['convert_to_rgb'],
-            'scaling': self.config['scaling'],
-            'cropping': self.config['cropping'],
-            'flipping': self.config['flipping'],
-            'padding': self.config['padding'],
-            'rotation': self.config['rotation'],
-            'brightness': self.config['brightness'],
-            'contrast': self.config['contrast'],
         }
-        train_generator = data.provider.train_generator_seg(train_images, train_masks, **config_preprocess)
-        val_generator = data.provider.val_generator_seg(val_images, val_masks, **config_preprocess)
+        train_generator = data.provider.generator_seg(train_images, train_masks, training=True, **config_preprocess)
+        val_generator = data.provider.generator_seg(val_images, val_masks, training=False, **config_preprocess)
 
         # Build model
         config_model = {
             'img_size': self.config['img_size'],
             'depth': self.config['depth'],
+            'width': self.config['width'],
             'n_classes': self.config['n_classes'],
         }
-        if self.config['resnet']:
-            model = models.resunet.model_seg(**config_model)
-        else:
-            model = models.unet.model_seg(**config_model)
+        model = models.unet.model_seg(**config_model)
+        tf.keras.utils.plot_model(model, to_file=self.output()['graph'].path, show_shapes=True)
+        model.summary()
 
         # Compile model
-        # TODO pass functions from config file
+        # TODO assert metrics from models.metrics
         config_compile = {
             'optimizer': tf.keras.optimizers.Adam(self.config['lr']),
-            'loss': models.metrics.dice_coefficient_loss,
-            'metrics': models.metrics.defaults(),
+            'loss': tf.keras.losses.BinaryCrossentropy(),
+            'metrics': [tf.keras.metrics.BinaryAccuracy()],
         }
         model.compile(**config_compile)
 
         # Train model
         callbacks = models.callbacks.defaults(
-            self.output()['model'].path,
+            self.output()['model_best'].path,
             self.output()['history'].path,
             self.output()['tensorboard'].path
         )
         config_training = {
-            'x': train_generator,
             'steps_per_epoch': len(train_images) // self.config['batch_size'],
             'epochs': self.config['epochs'],
             'callbacks': callbacks,
             'validation_data': val_generator,
             'validation_freq': self.config['validation_freq'],
-            'verbose': self.config['verbose']
+            'validation_steps': len(val_images) // self.config['batch_size'],
         }
-        model.fit(**config_training)
+        model.fit_generator(train_generator, **config_training)
+        model.save(self.output()['model_final'].path)
 
         # Save final configs
         config_final = {
@@ -159,6 +151,26 @@ class TrainOneModel(luigi.Task):
             **config_training
         }
         data.dirtools.dict_to_csv(config_final, self.output()['config'].path)
+
+
+class HParameterOptimizer(luigi.WrapperTask):
+    '''
+    '''
+    # lrs = np.linspace
+    # lrs = np.logspace
+    # lrs = sklearn.model_selection.RandomizedSearchCV
+    config = config.defaults
+
+    def requires(self):
+        for lr in self.lrs:
+            config_adjusted = {
+                'lr': lr,
+            }
+            self.config.update(config_adjusted)
+
+            uuid = 'hmm'  # TODO
+
+            yield TrainOneModel(config=self.config, uuid=uuid)
 
 
 # class CrossValidation(luigi.Task):
