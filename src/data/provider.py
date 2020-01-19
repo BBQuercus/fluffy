@@ -1,8 +1,7 @@
 import numpy as np
 import scipy.ndimage as ndi
-from tensorflow import keras
 
-# import data.augment
+import data.augment
 
 
 def _add_borders(input_mask, size, touching_only=False):
@@ -21,9 +20,6 @@ def _add_borders(input_mask, size, touching_only=False):
 
     mask = input_mask > 0
 
-    if size < 1:
-        return mask
-
     borders = []
     for i in np.unique(input_mask):
         curr_mask = np.where(input_mask == i, 1, 0)
@@ -34,7 +30,12 @@ def _add_borders(input_mask, size, touching_only=False):
 
     borders = np.sum(borders[1:], axis=0)
     cutoff = 1 if touching_only else 0
-    mask = np.where(borders>cutoff, 2, mask)
+
+    mask_borders = (borders > cutoff).astype(np.float32)
+    mask_foreground = (mask + (borders > cutoff)) - mask_borders
+    mask_background = 1 - (mask + (borders > cutoff))
+
+    mask = np.stack((mask_background, mask_foreground, mask_borders), axis=-1)
 
     return mask
 
@@ -58,12 +59,14 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     Args:
         input_image (np.array): Image to be processed.
         input_mask (np.array): Corresponding mask.
-        ––– **kwargs
+        --- **kwargs
         img_size (int): Desired size of image.
         bit_depth (int): Bit depth of image.
+        border (bool): If True, will add borders
         border_size (int): Size of border dilutions,
             set to zero if no borders are desired.
-        convert_to_rgb (bool): If True, images will be converted to RGB.
+        touching_only (bool): If True, only touching borders
+            will be used.
 
     Returns:
         input_image (np.array):
@@ -80,6 +83,13 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     assert input_image.shape[0] >= img_size
     assert input_image.shape[1] >= img_size
 
+    # Normalization
+    input_image = _normalize_image(input_image, bit_depth)
+
+    # Add border to mask
+    if border:
+        input_mask = _add_borders(input_mask, border_size, touching_only)
+
     # Cropping
     one, two = 0, 0
     if input_image.shape[0] > img_size:
@@ -90,17 +100,9 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     input_image = input_image[one:one+img_size, two:two+img_size]
     input_mask = input_mask[one:one+img_size, two:two+img_size]
 
-    # Normalization
-    input_image = _normalize_image(input_image, bit_depth)
-
     # Data augmentation for training
-    # if training:
-    #     input_image, input_mask = data.augment(defaults, **kwargs)
-
-    # Add border to mask
-    if border:
-        input_mask = _add_borders(input_mask, border_size, touching_only)
-        input_mask = keras.utils.to_categorical(input_mask)
+    if training:
+        input_image, input_mask = data.augment.default(input_image, input_mask)
 
     return input_image, input_mask
 
@@ -114,9 +116,10 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
             Images are checked and preprocessed.
         npy_masks (np.array): Array containing all masks.
         training (bool): If True will prepare documents for training.
-        ––– **kwargs
+        --- **kwargs
+        img_size (int): Size to which images get reshaped.
         batch_size (int): Size of minibatch yielded by generator.
-        ––– **kwargs +
+        --- **kwargs +
         Additional kwargs are used in the function load_valid_seg.
 
     Returns:
@@ -127,19 +130,28 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
     assert len(npy_masks) == len(npy_masks)
     for img in npy_images:
         assert img.ndim == 2, 'Images not grayscale'
+    for msk in npy_masks:
+        assert msk.ndim == 2, 'Masks not binary'
 
     img_size = kwargs.get('img_size', 256)
     batch_size = kwargs.get('batch_size', 16)
+    border = kwargs.get('border', True)
+    channels = 3 if border else 1
 
     while True:
         images = np.zeros((batch_size, img_size, img_size, 1))
-        masks = np.zeros((batch_size, img_size, img_size, 3))
+        masks = np.zeros((batch_size, img_size, img_size, channels))
 
         for i in range(batch_size):
             ix = np.random.randint(len(npy_images))
             image, mask = load_seg(npy_images[ix], npy_masks[ix], training, **kwargs)
 
+            if mask.shape[2] == 2:
+                import skimage.io
+                skimage.io.imsave('~/Downloads/img0.png', mask[:,:,0])
+                skimage.io.imsave('~/Downloads/img1.png', mask[:,:,1])
+
             images[i, :, :, 0] = image
-            masks[i, :, :, :] = mask
+            masks[i, :, :, :channels] = mask
 
         yield images, masks

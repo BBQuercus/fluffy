@@ -79,7 +79,7 @@ def model_seg(**kwargs):
     Returns:
         model (tf.keras.models.Model): UNet model for semantic segmentation.
     '''
-    img_size = kwargs.get('img_size', 256)
+    img_size = kwargs.get('img_size', None)
     depth = kwargs.get('depth', 3)
     width = kwargs.get('width', 16)
     classes = kwargs.get('classes', 3)

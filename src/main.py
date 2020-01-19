@@ -10,7 +10,6 @@ import models.unet
 import models.resunet
 import models.metrics
 import models.callbacks
-import config
 
 
 class ConvertImagesNpy(luigi.Task):
@@ -73,9 +72,32 @@ class TrainOneModel(luigi.Task):
         dir_out (dir): Path where model and logs should be saved.
     '''
 
-    config = luigi.parameter.DictParameter(default=config.defaults)
+    # Basic
     uuid = luigi.parameter.Parameter(default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     dir_out = luigi.parameter.Parameter(default='../models')
+    # hparams = luigi.parameter.Parameter(default=None)
+
+    # Architecture
+    resnet = luigi.parameter.BoolParameter(default=False)
+    img_size = luigi.parameter.IntParameter(default=256)
+    depth = luigi.parameter.IntParameter(default=4)
+    width = luigi.parameter.IntParameter(default=16)
+    classes = luigi.parameter.BoolParameter(default=True)
+
+    # Compilation – Luigi does not allow for objects as parameters
+    lr = luigi.parameter.FloatParameter(default=0.001)
+    loss = luigi.parameter.Parameter()
+
+    # Training
+    epochs = luigi.parameter.IntParameter(default=150)
+    validation_freq = luigi.parameter.IntParameter(default=1)
+    batch_size = luigi.parameter.IntParameter(default=16)
+
+    # Data
+    bit_depth = luigi.parameter.IntParameter(default=16)
+    border = luigi.parameter.BoolParameter(default=True)
+    border_size = luigi.parameter.IntParameter(default=2)
+    touching_only = luigi.parameter.BoolParameter(default=True)
 
     def requires(self):
         return ConvertImagesNpy()
@@ -100,31 +122,31 @@ class TrainOneModel(luigi.Task):
 
         # Prepare generators
         config_preprocess = {
-            'img_size': self.config['img_size'],
-            'bit_depth': self.config['bit_depth'],
-            'batch_size': self.config['batch_size'],
+            'img_size': self.img_size,
+            'bit_depth': self.bit_depth,
+            'batch_size': self.batch_size,
+            'border': self.border,
+            'border_size': self.border_size,
+            'touching_only': self.touching_only
         }
         train_generator = data.provider.generator_seg(train_images, train_masks, training=True, **config_preprocess)
         val_generator = data.provider.generator_seg(val_images, val_masks, training=False, **config_preprocess)
 
         # Build model
         config_model = {
-            'img_size': self.config['img_size'],
-            'depth': self.config['depth'],
-            'width': self.config['width'],
-            'classes': self.config['classes'],
+            'depth': self.depth,
+            'width': self.width,
+            'classes': self.classes,
         }
         model = models.unet.model_seg(**config_model)
         tf.keras.utils.plot_model(model, to_file=self.output()['graph'].path, show_shapes=True)
         model.summary()
 
         # Compile model
-        # TODO assert metrics from models.metrics
-        # TODO auto add categorical / binary metrics?
         config_compile = {
-            'optimizer': tf.keras.optimizers.Adam(self.config['lr']),
-            'loss': tf.keras.losses.CategoricalCrossentropy(),
-            'metrics': [tf.keras.metrics.CategoricalAccuracy()],
+            'optimizer': tf.keras.optimizers.Adam(self.lr),
+            'loss': self.loss,
+            'metrics': models.metrics.default(),
         }
         model.compile(**config_compile)
 
@@ -135,12 +157,12 @@ class TrainOneModel(luigi.Task):
             self.output()['tensorboard'].path
         )
         config_training = {
-            'steps_per_epoch': len(train_images) // self.config['batch_size'],
-            'epochs': self.config['epochs'],
+            'steps_per_epoch': len(train_images) // self.batch_size,
+            'epochs': self.epochs,
             'callbacks': callbacks,
             'validation_data': val_generator,
-            'validation_freq': self.config['validation_freq'],
-            'validation_steps': len(val_images) // self.config['batch_size'],
+            'validation_freq': self.validation_freq,
+            'validation_steps': len(val_images) // self.batch_size,
         }
         model.fit_generator(train_generator, **config_training)
         model.save(self.output()['model_final'].path)
@@ -155,90 +177,86 @@ class TrainOneModel(luigi.Task):
         data.dirtools.dict_to_csv(config_final, self.output()['config'].path)
 
 
-class HParameterOptimizer(luigi.WrapperTask):
-    '''
-    '''
-    # lrs = np.linspace
-    # lrs = np.logspace
-    # lrs = sklearn.model_selection.RandomizedSearchCV
-    config = config.defaults
-
-    def requires(self):
-        for lr in self.lrs:
-            config_adjusted = {
-                'lr': lr,
-            }
-            self.config.update(config_adjusted)
-
-            uuid = 'hmm'  # TODO
-
-            yield TrainOneModel(config=self.config, uuid=uuid)
-
-
 def main():
-    hparam_lr = [0.1, 0.01, 0.001, 0.0001]
-    hparam_width = [4, 16, 64]
-    hparam_depth = [1, 2, 4]
+    hparam_lr = [0.0001]
+    hparam_bs = [16, 32, 64]
+    hparam_width = [16, 64]
+    hparam_depth = [4]
+    hparam_loss = [tf.keras.losses.CategoricalCrossentropy(), tf.keras.losses.CosineSimilarity(), tf.keras.losses.MeanSquaredError()]
 
-    for lr, width, depth in itertools.product(
-            hparam_lr, hparam_width, hparam_depth):
+    for lr, width, depth, batch_size, loss in itertools.product(
+            hparam_lr, hparam_width, hparam_depth, hparam_bs, hparam_loss):
 
         config_new = {
             'lr': lr,
             'width': width,
-            'depth': depth
+            'depth': depth,
+            'batch_size': batch_size,
         }
-        config_curr = config.defaults
-        config_curr.update(config_new)
 
-        uuid = f'lr-{lr}_w-{width}_d-{depth}'
+        uuid = f'lr-{lr}_w-{width}_d-{depth}_bs-{batch_size}_loss-{hparam_loss.index(loss)}'
 
-        luigi.build([TrainOneModel(config_curr, uuid)], local_scheduler=True)
+        luigi.build([TrainOneModel(uuid, loss=loss, **config_new)], local_scheduler=True)
 
 
 if __name__ == "__main__":
     main()
 
 
-# class CrossValidation(luigi.Task):
+# def mainhp():
+#     import tensorboard.plugins.hparams.api as hp
+#     HP_NUM_UNITS = hp.HParam('num_units', hp.Discrete([16, 32]))
+#     HP_DROPOUT = hp.HParam('dropout', hp.RealInterval(0.1, 0.2))
+#     HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam', 'sgd']))
+#     METRIC_ACCURACY = 'accuracy'
 
-#     def
+#     with tf.summary.create_file_writer('logs/hparam_tuning').as_default():
+#         hp.hparams_config(
+#             hparams=[HP_NUM_UNITS, HP_DROPOUT, HP_OPTIMIZER],
+#             metrics=[hp.Metric(METRIC_ACCURACY, display_name='Accuracy')],
+#         )
 
-# def cross_validate(session, split_size=5):
-#     results = []
-#     kf = sklearn.model_selection.KFold(n_splits=split_size)
-#     for train_idx, val_idx in kf.split(train_x_all, train_y_all):
-#         train_x = train_x_all[train_idx]
-#         train_y = train_y_all[train_idx]
-#         val_x = train_x_all[val_idx]
-#         val_y = train_y_all[val_idx]
-#         run_train(session, train_x, train_y)
-#         results.append(session.run(accuracy, feed_dict={x: val_x, y: val_y}))
-#     return results
+#     def train_test_model(hparams):
+#         model = tf.keras.models.Sequential([
+#             tf.keras.layers.Flatten(),
+#             tf.keras.layers.Dense(hparams[HP_NUM_UNITS], activation=tf.nn.relu),
+#             tf.keras.layers.Dropout(hparams[HP_DROPOUT]),
+#             tf.keras.layers.Dense(10, activation=tf.nn.softmax),
+#         ])
+#         model.compile(
+#             optimizer=hparams[HP_OPTIMIZER],
+#             loss='sparse_categorical_crossentropy',
+#             metrics=['accuracy'],
+#         )
 
-# Parsing functionality from https://github.com/divamgupta/image-segmentation-keras/blob/master/keras_segmentation/cli_interface.py
+#         model.fit(x_train, y_train, epochs=1) # Run with 1 epoch to speed things up for demo purposes
+#         _, accuracy = model.evaluate(x_test, y_test)
+#         return accuracy
 
-# def visualize_dataset_action(command_parser):
-#     parser = command_parser.add_parser('visualize_dataset')
-#     parser.add_argument("--images_path", type=str)
-#     parser.add_argument("--segs_path", type=str)
-#     parser.add_argument("--n_classes", type=int)
-#     parser.add_argument('--do_augment', action='store_true')
-#     def action(args):
-#         visualize_segmentation_dataset(args.images_path, args.segs_path,
-#                                     args.n_classes, do_augment=args.do_augment)
-#     parser.set_defaults(func=action)
+#     def run(run_dir, hparams):
+#         with tf.summary.create_file_writer(run_dir).as_default():
+#             hp.hparams(hparams)  # record the values used in this trial
+#             accuracy = train_test_model(hparams)
+#             tf.summary.scalar(METRIC_ACCURACY, accuracy, step=1)
 
-# def main():
-#     assert len(sys.argv) >= 2, \
-#         "python -m keras_segmentation <command> <arguments>"
-#     main_parser = argparse.ArgumentParser()
-#     command_parser = main_parser.add_subparsers()
-#     # Add individual commands
-#     train_action(command_parser)
-#     predict_action(command_parser)
-#     verify_dataset_action(command_parser)
-#     visualize_dataset_action(command_parser)
-#     evaluate_model_action(command_parser)
-#     args = main_parser.parse_args()
-#     args.func(args)
+#     model.fit(
+#         ...,
+#         callbacks=[
+#             tf.keras.callbacks.TensorBoard(logdir),  # log metrics
+#             hp.KerasCallback(logdir, hparams),  # log hparams
+#         ],
+#     )
+
+#     for num_units in HP_NUM_UNITS.domain.values:
+#         for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
+#             for optimizer in HP_OPTIMIZER.domain.values:
+#                 hparams = {
+#                     HP_NUM_UNITS: num_units,
+#                     HP_DROPOUT: dropout_rate,
+#                     HP_OPTIMIZER: optimizer,
+#                 }
+#                 run_name = "run-%d" % session_num
+#                 print('--- Starting trial: %s' % run_name)
+#                 print({h.name: hparams[h] for h in hparams})
+#                 run('logs/hparam_tuning/' + run_name, hparams)
+#                 session_num += 1
