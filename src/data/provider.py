@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import scipy.ndimage as ndi
+from tensorflow import keras
 
 import data.augment
 
@@ -34,7 +35,7 @@ def _add_borders(input_mask, size, add_touching=False):
 
     mask_borders = (borders > 0).astype(np.float32)
     mask_touching = (borders > 1).astype(np.float32)
-    mask_foreground = (mask + mask_borders) - mask_borders
+    mask_foreground = ((mask + mask_borders) - mask_borders).astype(np.float32)
     mask_background = ((mask_foreground + mask_borders) == 0).astype(np.float32)
 
     if not add_touching:
@@ -60,11 +61,13 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
         input_mask (np.array): Corresponding mask.
         --- **kwargs
         img_size (int): Desired size of image.
-        border (bool): If True, will add borders
+        bit_depth (int): Bit depth of image.
         border_size (int): Size of border dilutions,
             set to zero if no borders are desired.
-        touching_only (bool): If True, only touching borders
-            will be used.
+        convert_to_rgb (bool): If True, images will be converted to RGB.
+        --- **kwargs  +
+        Additional kwargs used to determine the extent of data augmentation
+            during training. See data.augment.default for more information.
 
     Returns:
         input_image (np.array):
@@ -73,7 +76,7 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     img_size = kwargs.get('img_size', 256)
     border = kwargs.get('border', True)
     border_size = kwargs.get('border_size', 2)
-    add_touching = kwargs.get('add_touching', True)
+    add_touching = kwargs.get('add_touching', False)
 
     assert type(input_image) == np.ndarray and type(input_mask) == np.ndarray
     assert input_image.shape[:2] == input_mask.shape[:2]
@@ -87,6 +90,10 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     if border:
         input_mask = _add_borders(input_mask, border_size, add_touching)
 
+    # Data augmentation for training
+    if training:
+        input_image, input_mask = data.augment.default(input_image, input_mask)
+
     # Cropping
     one, two = 0, 0
     if input_image.shape[0] > img_size:
@@ -96,10 +103,6 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
 
     input_image = input_image[one:one+img_size, two:two+img_size]
     input_mask = input_mask[one:one+img_size, two:two+img_size]
-
-    # Data augmentation for training
-    # if training:
-    #     input_image, input_mask = data.augment.default(input_image, input_mask)
 
     return input_image, input_mask
 
@@ -114,7 +117,6 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
         npy_masks (np.array): Array containing all masks.
         training (bool): If True will prepare documents for training.
         --- **kwargs
-        img_size (int): Size to which images get reshaped.
         batch_size (int): Size of minibatch yielded by generator.
         --- **kwargs +
         Additional kwargs are used in the function load_valid_seg.
@@ -127,29 +129,19 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
     assert len(npy_masks) == len(npy_masks)
     for img in npy_images:
         assert img.ndim == 2, 'Images not grayscale'
-    for msk in npy_masks:
-        assert msk.ndim == 2, 'Masks not binary'
 
     img_size = kwargs.get('img_size', 256)
     batch_size = kwargs.get('batch_size', 16)
-    border = kwargs.get('border', True)
-    add_touching = kwargs.get('add_touching', True)
-
-    if add_touching:
-        channels = 4
-    elif border:
-        channels = 3
-    else:
-        channels = 1
 
     while True:
         images = np.zeros((batch_size, img_size, img_size, 1))
-        masks = np.zeros((batch_size, img_size, img_size, channels))
+        masks = np.zeros((batch_size, img_size, img_size, 3))
 
         for i in range(batch_size):
             ix = np.random.randint(len(npy_images))
             image, mask = load_seg(npy_images[ix], npy_masks[ix], training, **kwargs)
+
             images[i, :, :, 0] = image
-            masks[i, :, :, :channels] = mask
+            masks[i, :, :, :] = mask
 
         yield images, masks

@@ -10,6 +10,7 @@ import models.unet
 import models.resunet
 import models.metrics
 import models.callbacks
+import config
 
 
 class ConvertImagesNpy(luigi.Task):
@@ -72,33 +73,10 @@ class TrainOneModel(luigi.Task):
         dir_out (dir): Path where model and logs should be saved.
     '''
 
-    # Basic
+    config = luigi.parameter.DictParameter(default=config.defaults)
     uuid = luigi.parameter.Parameter(default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
-    dir_out = luigi.parameter.Parameter(default='../models')
-
-    # Data
-    border = luigi.parameter.BoolParameter(default=True)
-    border_size = luigi.parameter.IntParameter(default=2)
-    add_touching = luigi.parameter.BoolParameter(default=False)
-
-    # Architecture
-    resnet = luigi.parameter.BoolParameter(default=False)
-    img_size = luigi.parameter.IntParameter(default=256)
-    depth = luigi.parameter.IntParameter(default=4)
-    width = luigi.parameter.IntParameter(default=8)
-    momentum = luigi.parameter.FloatParameter(default=0.9)
-    dropout = luigi.parameter.FloatParameter(default=0.2)
-    # TODO change automatically w/ borders
-    classes = luigi.parameter.IntParameter(default=3)
-
-    # Compilation - Luigi does not allow for objects as parameters
-    lr = luigi.parameter.FloatParameter(default=0.0001)
     loss = luigi.parameter.Parameter()
-
-    # Training
-    epochs = luigi.parameter.IntParameter(default=150)
-    validation_freq = luigi.parameter.IntParameter(default=1)
-    batch_size = luigi.parameter.IntParameter(default=16)
+    dir_out = luigi.parameter.Parameter(default='../models')
 
     def requires(self):
         return ConvertImagesNpy()
@@ -123,22 +101,22 @@ class TrainOneModel(luigi.Task):
 
         # Prepare generators
         config_preprocess = {
-            'img_size': self.img_size,
-            'batch_size': self.batch_size,
-            'border': self.border,
-            'border_size': self.border_size,
-            'add_touching': self.add_touching
+            'img_size': self.config['img_size'],
+            'batch_size': self.config['batch_size'],
+            'border': self.config['border'],
+            'border_size': self.config['border_size'],
+            'add_touching': self.config['add_touching'],
         }
         train_generator = data.provider.generator_seg(train_images, train_masks, training=True, **config_preprocess)
         val_generator = data.provider.generator_seg(val_images, val_masks, training=False, **config_preprocess)
 
         # Build model
         config_model = {
-            'depth': self.depth,
-            'width': self.width,
-            'momentum': self.momentum,
-            'dropout': self.dropout,
-            'classes': self.classes
+            'depth': self.config['depth'],
+            'width': self.config['width'],
+            'momentum': self.config['momentum'],
+            'dropout': self.config['dropout'],
+            'classes': self.config['classes'],
         }
         model = models.unet.model_seg(**config_model)
         tf.keras.utils.plot_model(model, to_file=self.output()['graph'].path, show_shapes=True)
@@ -146,9 +124,9 @@ class TrainOneModel(luigi.Task):
 
         # Compile model
         config_compile = {
-            'optimizer': tf.keras.optimizers.Adam(self.lr),
+            'optimizer': tf.keras.optimizers.Adam(self.config['lr']),
             'loss': self.loss,
-            'metrics': models.metrics.default(),
+            'metrics': [tf.keras.metrics.CategoricalAccuracy()],
         }
         model.compile(**config_compile)
 
@@ -159,12 +137,12 @@ class TrainOneModel(luigi.Task):
             self.output()['tensorboard'].path
         )
         config_training = {
-            'steps_per_epoch': len(train_images) // self.batch_size,
-            'epochs': self.epochs,
+            'steps_per_epoch': len(train_images) // self.config['batch_size'],
+            'epochs': self.config['epochs'],
             'callbacks': callbacks,
             'validation_data': val_generator,
-            'validation_freq': self.validation_freq,
-            'validation_steps': len(val_images) // self.batch_size,
+            'validation_freq': self.config['validation_freq'],
+            'validation_steps': len(val_images) // self.config['batch_size'],
         }
         model.fit_generator(train_generator, **config_training)
         model.save(self.output()['model_final'].path)
@@ -180,14 +158,27 @@ class TrainOneModel(luigi.Task):
 
 
 def main():
-    '''
-    '''
-    # hparam_lr = [1e-4, 1e-5]
-    # for lr in hparam_lr:
-    lr = 1e-4
-    loss = tf.keras.losses.CategoricalCrossentropy()
-    uuid = f'aug-0_lr-{lr}'
-    luigi.build([TrainOneModel(uuid, loss=loss, lr=lr)], local_scheduler=True)
+    hparam_lr = [1e-04, 1e-05]
+    hparam_bs = [8, 32]
+    hparam_width = [8]
+    hparam_depth = [4]
+    hparam_loss = [tf.keras.losses.CategoricalCrossentropy()]
+
+    for lr, width, depth, batch_size, loss in itertools.product(
+            hparam_lr, hparam_width, hparam_depth, hparam_bs, hparam_loss):
+
+        config_new = {
+            'lr': lr,
+            'width': width,
+            'depth': depth,
+            'batch_size': batch_size,
+        }
+        config_curr = config.defaults
+        config_curr.update(config_new)
+
+        uuid = f'lr-{lr}_w-{width}_d-{depth}_bs-{batch_size}_loss-{hparam_loss.index(loss)}'
+
+        luigi.build([TrainOneModel(config_curr, uuid, loss)], local_scheduler=True)
 
 
 if __name__ == "__main__":

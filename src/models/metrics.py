@@ -152,7 +152,7 @@ def active_contour_loss(y_true, y_pred):
     return loss
 
 
-def default():
+def defaults():
     ''' Returns list of metrics used by default. '''
     return [
         # TODO fix magic number
