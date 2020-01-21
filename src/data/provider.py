@@ -31,10 +31,10 @@ def _add_borders(input_mask, size, add_touching=False):
         curr_border = np.logical_xor(mask_dilated, mask_eroded)
         borders.append(curr_border)
 
-    borders = np.sum(borders[1:], axis=0)
+    borders = np.sum(borders[1:], axis=0) if not borders else np.zeros(input_mask.shape)
 
     mask_borders = (borders > 0).astype(np.float32)
-    mask_touching = (borders > 1).astype(np.float32)
+    # mask_touching = (borders > 1).astype(np.float32)
     mask_foreground = ((mask + mask_borders) - mask_borders).astype(np.float32)
     mask_background = ((mask_foreground + mask_borders) == 0).astype(np.float32)
 
@@ -83,6 +83,16 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     assert input_image.shape[0] >= img_size
     assert input_image.shape[1] >= img_size
 
+    # Cropping
+    one, two = 0, 0
+    if input_image.shape[0] > img_size:
+        one = np.random.randint(low=0, high=input_image.shape[0]-img_size)
+    if input_image.shape[1] > img_size:
+        two = np.random.randint(low=0, high=input_image.shape[1]-img_size)
+
+    input_image = input_image[one:one+img_size, two:two+img_size]
+    input_mask = input_mask[one:one+img_size, two:two+img_size]
+
     # Normalization
     input_image = _normalize_image(input_image)
 
@@ -93,16 +103,6 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     # Data augmentation for training
     if training:
         input_image, input_mask = data.augment.default(input_image, input_mask)
-
-    # Cropping
-    one, two = 0, 0
-    if input_image.shape[0] > img_size:
-        one = np.random.randint(low=0, high=input_image.shape[0]-img_size)
-    if input_image.shape[1] > img_size:
-        two = np.random.randint(low=0, high=input_image.shape[1]-img_size)
-
-    input_image = input_image[one:one+img_size, two:two+img_size]
-    input_mask = input_mask[one:one+img_size, two:two+img_size]
 
     return input_image, input_mask
 
