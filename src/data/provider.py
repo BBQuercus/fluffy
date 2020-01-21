@@ -1,18 +1,20 @@
+import re
 import numpy as np
 import scipy.ndimage as ndi
 
 import data.augment
 
 
-def _add_borders(input_mask, size, touching_only=False):
+def _add_borders(input_mask, size, add_touching=False):
     '''
     Returns a mask containing the borders of all objects.
 
     Args:
         input_mask (np.array): Mask to be processed.
         size (int): Size of borders (iterations of dilution / erosion).
-        touching_only (bool): If true returns only overlapping borders
-            after dilated. If false returns all borders.
+        add_touching (bool): If true returns overlapping borders seperately
+            after dilated (4 classes).
+            If false returns all borders only (3 classes).
 
     Returns:
         mask (np.array): Mask containing borders.
@@ -29,26 +31,23 @@ def _add_borders(input_mask, size, touching_only=False):
         borders.append(curr_border)
 
     borders = np.sum(borders[1:], axis=0)
-    cutoff = 1 if touching_only else 0
 
-    mask_borders = (borders > cutoff).astype(np.float32)
-    mask_foreground = (mask + (borders > cutoff)) - mask_borders
-    mask_background = 1 - (mask + (borders > cutoff))
+    mask_borders = (borders > 0).astype(np.float32)
+    mask_touching = (borders > 1).astype(np.float32)
+    mask_foreground = (mask + mask_borders) - mask_borders
+    mask_background = ((mask_foreground + mask_borders) == 0).astype(np.float32)
 
-    mask = np.stack((mask_background, mask_foreground, mask_borders), axis=-1)
+    if not add_touching:
+        return np.stack((mask_background, mask_foreground, mask_borders), axis=-1)
 
-    return mask
+    return np.stack((mask_background, mask_foreground, mask_borders, mask_touching), axis=-1)
 
 
-def _normalize_image(input_image, bit_depth):
+def _normalize_image(input_image):
     ''' Normalizes image based on bit depth. '''
+    assert type(input_image) == np.ndarray
+    bit_depth = int(re.search(r'(\d+)', str(input_image.dtype)).group(0))
     return input_image.astype(np.float32) / ((2**bit_depth)-1.)
-
-
-# def _grayscale_to_rgb(input_image):
-#     ''' Converts grayscale image to RGB. '''
-#     assert input_image.ndim != 2, 'Image not grayscale.'
-#     return np.stack((input_image,)*3, axis=-1)
 
 
 def load_seg(input_image, input_mask, training=False, **kwargs):
@@ -61,7 +60,6 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
         input_mask (np.array): Corresponding mask.
         --- **kwargs
         img_size (int): Desired size of image.
-        bit_depth (int): Bit depth of image.
         border (bool): If True, will add borders
         border_size (int): Size of border dilutions,
             set to zero if no borders are desired.
@@ -73,10 +71,9 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
         input_mask (np.array):
     '''
     img_size = kwargs.get('img_size', 256)
-    bit_depth = kwargs.get('bit_depth', 16)
     border = kwargs.get('border', True)
     border_size = kwargs.get('border_size', 2)
-    touching_only = kwargs.get('touching_only', False)
+    add_touching = kwargs.get('add_touching', True)
 
     assert type(input_image) == np.ndarray and type(input_mask) == np.ndarray
     assert input_image.shape[:2] == input_mask.shape[:2]
@@ -84,11 +81,11 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     assert input_image.shape[1] >= img_size
 
     # Normalization
-    input_image = _normalize_image(input_image, bit_depth)
+    input_image = _normalize_image(input_image)
 
     # Add border to mask
     if border:
-        input_mask = _add_borders(input_mask, border_size, touching_only)
+        input_mask = _add_borders(input_mask, border_size, add_touching)
 
     # Cropping
     one, two = 0, 0
@@ -101,8 +98,8 @@ def load_seg(input_image, input_mask, training=False, **kwargs):
     input_mask = input_mask[one:one+img_size, two:two+img_size]
 
     # Data augmentation for training
-    if training:
-        input_image, input_mask = data.augment.default(input_image, input_mask)
+    # if training:
+    #     input_image, input_mask = data.augment.default(input_image, input_mask)
 
     return input_image, input_mask
 
@@ -136,7 +133,14 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
     img_size = kwargs.get('img_size', 256)
     batch_size = kwargs.get('batch_size', 16)
     border = kwargs.get('border', True)
-    channels = 3 if border else 1
+    add_touching = kwargs.get('add_touching', True)
+
+    if add_touching:
+        channels = 4
+    elif border:
+        channels = 3
+    else:
+        channels = 1
 
     while True:
         images = np.zeros((batch_size, img_size, img_size, 1))
@@ -145,12 +149,6 @@ def generator_seg(npy_images, npy_masks, training=False, **kwargs):
         for i in range(batch_size):
             ix = np.random.randint(len(npy_images))
             image, mask = load_seg(npy_images[ix], npy_masks[ix], training, **kwargs)
-
-            if mask.shape[2] == 2:
-                import skimage.io
-                skimage.io.imsave('~/Downloads/img0.png', mask[:,:,0])
-                skimage.io.imsave('~/Downloads/img1.png', mask[:,:,1])
-
             images[i, :, :, 0] = image
             masks[i, :, :, :channels] = mask
 

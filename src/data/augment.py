@@ -88,19 +88,15 @@ def _augment_contrast(input_image):
     equalization.
     '''
     rand_total = np.random.randint(low=0, high=1)
-    rand = np.random.randint(low=0, high=3)
+    rand = np.random.randint(low=0, high=1)
 
     # Contrast stretching
     if (rand_total == 0 and rand == 0):
         p2, p98 = np.percentile(input_image, (2, 98))
         input_image = skimage.exposure.rescale_intensity(input_image, in_range=(p2, p98))
 
-    # Equalization
-    if (rand_total == 0 and rand == 1):
-        input_image = skimage.exposure.equalize_hist(input_image)
-
     # Adaptive Equalization
-    if (rand_total == 0 and rand == 2):
+    if (rand_total == 0 and rand == 1):
         input_image = skimage.exposure.equalize_adapthist(input_image, clip_limit=0.03)
 
     return input_image

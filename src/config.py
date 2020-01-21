@@ -23,7 +23,7 @@ defaults = {
     'bit_depth': 16,
 
     # 'scaling': True,
-    # 'cropping': True,
+    # 'swirl': True,
     # 'flipping': True,
     # 'padding': True,
     # 'rotation': True,

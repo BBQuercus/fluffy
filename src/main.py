@@ -75,29 +75,30 @@ class TrainOneModel(luigi.Task):
     # Basic
     uuid = luigi.parameter.Parameter(default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     dir_out = luigi.parameter.Parameter(default='../models')
-    # hparams = luigi.parameter.Parameter(default=None)
+
+    # Data
+    border = luigi.parameter.BoolParameter(default=True)
+    border_size = luigi.parameter.IntParameter(default=2)
+    add_touching = luigi.parameter.BoolParameter(default=False)
 
     # Architecture
     resnet = luigi.parameter.BoolParameter(default=False)
     img_size = luigi.parameter.IntParameter(default=256)
     depth = luigi.parameter.IntParameter(default=4)
-    width = luigi.parameter.IntParameter(default=16)
-    classes = luigi.parameter.BoolParameter(default=True)
+    width = luigi.parameter.IntParameter(default=8)
+    momentum = luigi.parameter.FloatParameter(default=0.9)
+    dropout = luigi.parameter.FloatParameter(default=0.2)
+    # TODO change automatically w/ borders
+    classes = luigi.parameter.IntParameter(default=3)
 
-    # Compilation – Luigi does not allow for objects as parameters
-    lr = luigi.parameter.FloatParameter(default=0.001)
+    # Compilation - Luigi does not allow for objects as parameters
+    lr = luigi.parameter.FloatParameter(default=0.0001)
     loss = luigi.parameter.Parameter()
 
     # Training
     epochs = luigi.parameter.IntParameter(default=150)
     validation_freq = luigi.parameter.IntParameter(default=1)
     batch_size = luigi.parameter.IntParameter(default=16)
-
-    # Data
-    bit_depth = luigi.parameter.IntParameter(default=16)
-    border = luigi.parameter.BoolParameter(default=True)
-    border_size = luigi.parameter.IntParameter(default=2)
-    touching_only = luigi.parameter.BoolParameter(default=True)
 
     def requires(self):
         return ConvertImagesNpy()
@@ -123,11 +124,10 @@ class TrainOneModel(luigi.Task):
         # Prepare generators
         config_preprocess = {
             'img_size': self.img_size,
-            'bit_depth': self.bit_depth,
             'batch_size': self.batch_size,
             'border': self.border,
             'border_size': self.border_size,
-            'touching_only': self.touching_only
+            'add_touching': self.add_touching
         }
         train_generator = data.provider.generator_seg(train_images, train_masks, training=True, **config_preprocess)
         val_generator = data.provider.generator_seg(val_images, val_masks, training=False, **config_preprocess)
@@ -136,7 +136,9 @@ class TrainOneModel(luigi.Task):
         config_model = {
             'depth': self.depth,
             'width': self.width,
-            'classes': self.classes,
+            'momentum': self.momentum,
+            'dropout': self.dropout,
+            'classes': self.classes
         }
         model = models.unet.model_seg(**config_model)
         tf.keras.utils.plot_model(model, to_file=self.output()['graph'].path, show_shapes=True)
@@ -178,85 +180,41 @@ class TrainOneModel(luigi.Task):
 
 
 def main():
-    hparam_lr = [0.0001]
-    hparam_bs = [16, 32, 64]
-    hparam_width = [16, 64]
-    hparam_depth = [4]
-    hparam_loss = [tf.keras.losses.CategoricalCrossentropy(), tf.keras.losses.CosineSimilarity(), tf.keras.losses.MeanSquaredError()]
-
-    for lr, width, depth, batch_size, loss in itertools.product(
-            hparam_lr, hparam_width, hparam_depth, hparam_bs, hparam_loss):
-
-        config_new = {
-            'lr': lr,
-            'width': width,
-            'depth': depth,
-            'batch_size': batch_size,
-        }
-
-        uuid = f'lr-{lr}_w-{width}_d-{depth}_bs-{batch_size}_loss-{hparam_loss.index(loss)}'
-
-        luigi.build([TrainOneModel(uuid, loss=loss, **config_new)], local_scheduler=True)
+    '''
+    '''
+    # hparam_lr = [1e-4, 1e-5]
+    # for lr in hparam_lr:
+    lr = 1e-4
+    loss = tf.keras.losses.CategoricalCrossentropy()
+    uuid = f'aug-0_lr-{lr}'
+    luigi.build([TrainOneModel(uuid, loss=loss, lr=lr)], local_scheduler=True)
 
 
 if __name__ == "__main__":
     main()
 
 
-# def mainhp():
-#     import tensorboard.plugins.hparams.api as hp
-#     HP_NUM_UNITS = hp.HParam('num_units', hp.Discrete([16, 32]))
-#     HP_DROPOUT = hp.HParam('dropout', hp.RealInterval(0.1, 0.2))
-#     HP_OPTIMIZER = hp.HParam('optimizer', hp.Discrete(['adam', 'sgd']))
-#     METRIC_ACCURACY = 'accuracy'
+# class CrossValidateModel(luigi.Task):
 
-#     with tf.summary.create_file_writer('logs/hparam_tuning').as_default():
-#         hp.hparams_config(
-#             hparams=[HP_NUM_UNITS, HP_DROPOUT, HP_OPTIMIZER],
-#             metrics=[hp.Metric(METRIC_ACCURACY, display_name='Accuracy')],
-#         )
+#     hparam_... = luigi.parameter.Parameter()
+#     kfold = luigi.parameter.Parameter(default=5)
 
-#     def train_test_model(hparams):
-#         model = tf.keras.models.Sequential([
-#             tf.keras.layers.Flatten(),
-#             tf.keras.layers.Dense(hparams[HP_NUM_UNITS], activation=tf.nn.relu),
-#             tf.keras.layers.Dropout(hparams[HP_DROPOUT]),
-#             tf.keras.layers.Dense(10, activation=tf.nn.softmax),
-#         ])
-#         model.compile(
-#             optimizer=hparams[HP_OPTIMIZER],
-#             loss='sparse_categorical_crossentropy',
-#             metrics=['accuracy'],
-#         )
+#     def requires(self):
+#         return ConvertImagesNpy()
 
-#         model.fit(x_train, y_train, epochs=1) # Run with 1 epoch to speed things up for demo purposes
-#         _, accuracy = model.evaluate(x_test, y_test)
-#         return accuracy
+#     def output(self):
+#         return {
+#             'model': [],
+#         }
 
-#     def run(run_dir, hparams):
-#         with tf.summary.create_file_writer(run_dir).as_default():
-#             hp.hparams(hparams)  # record the values used in this trial
-#             accuracy = train_test_model(hparams)
-#             tf.summary.scalar(METRIC_ACCURACY, accuracy, step=1)
+#     def run(self):
+#         train_val_images = np.load(self.input()['train_val_images'].path, allow_pickle=True)
+#         train_val_masks = np.load(self.input()['train_val_images'].path, allow_pickle=True)
 
-#     model.fit(
-#         ...,
-#         callbacks=[
-#             tf.keras.callbacks.TensorBoard(logdir),  # log metrics
-#             hp.KerasCallback(logdir, hparams),  # log hparams
-#         ],
-#     )
-
-#     for num_units in HP_NUM_UNITS.domain.values:
-#         for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
-#             for optimizer in HP_OPTIMIZER.domain.values:
-#                 hparams = {
-#                     HP_NUM_UNITS: num_units,
-#                     HP_DROPOUT: dropout_rate,
-#                     HP_OPTIMIZER: optimizer,
-#                 }
-#                 run_name = "run-%d" % session_num
-#                 print('--- Starting trial: %s' % run_name)
-#                 print({h.name: hparams[h] for h in hparams})
-#                 run('logs/hparam_tuning/' + run_name, hparams)
-#                 session_num += 1
+#         kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
+#         cvscores = []
+#         for train, val in kfold.split(X, Y):
+#             scores = model.evaluate(X[val], Y[val], verbose=0)
+#             print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+#             cvscores.append(scores[1] * 100)
+#         return None
