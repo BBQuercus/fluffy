@@ -1,7 +1,11 @@
-# Deep learning workflow
+Fluffy-Guide
+==============================
+
+Pipeline for segmenting biomedical microscopy images.
 
 
 ### Overview
+
 - Why use my workflow?
 - System requirements and installation
 - Data availability
@@ -22,7 +26,6 @@ This workflow uses two main elements:
 
 1. Code in this repository
 2. Conda package manager (see [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/))
-
 
 
 Set up your environment using the following commands:
@@ -47,7 +50,10 @@ All training and testing data (not including raw files) can be found as `.npy` f
 Once the local environment was set up according to the instructions above, the model can be trained by calling one of the following calls:
 
 ```bash
-PYTHONPATH=. luigi --module main TrainOneModel --local-scheduler
+# Binary model
+python train_binary.py
+# Categorical model
+python train_categorical.py
 ```
 
 
