@@ -4,6 +4,7 @@ import skimage
 import datetime
 import numpy as np
 import tensorflow as tf
+import scipy.ndimage as ndi
 
 
 def train_valid_split(x_list, y_list, valid_split=0.25):
@@ -39,7 +40,7 @@ def train_valid_split(x_list, y_list, valid_split=0.25):
 
 def standard_unet(img_size=None):
     '''
-    Builds a UNet model for binary segmentation of gray-scale images.
+    Builds a UNet model for categorical segmentation of gray-scale images.
 
     Args:
         - img_size (int, optional): Image size used to create the model,
@@ -117,14 +118,41 @@ def standard_unet(img_size=None):
     h = tf.keras.layers.UpSampling2D()(h)
     y = tf.keras.layers.concatenate([h, a], axis=3)
 
-    y = tf.keras.layers.Conv2D(8, (3, 3), **option_dict_conv)(y)
-    y = tf.keras.layers.Conv2D(8, (3, 3), **option_dict_conv)(y)
+    y = tf.keras.layers.Conv2D(16, (3, 3), **option_dict_conv)(y)
+    y = tf.keras.layers.Conv2D(16, (3, 3), **option_dict_conv)(y)
 
-    y = tf.keras.layers.Conv2D(1, (1, 1), activation='sigmoid')(y)
+    y = tf.keras.layers.Conv2D(3, (1, 1), activation='softmax')(y)
 
     model = tf.keras.models.Model(inputs=[x], outputs=[y])
 
     return model
+
+
+def _add_borders(input_mask, size=2):
+    '''
+    Adds borders to labeled masks.
+
+    Args:
+        - input_mask (np.array): Mask with uniquely labeled
+            object to which borders will be added.
+        - size (int): Size of border in pixels.
+    Returns:
+        - output_mask (np.array): Mask with three channels –
+            Background (0), Objects (1), and Borders (2).
+    '''
+
+    assert type(input_mask) == np.ndarray
+    assert type(size) == int
+
+    borders = np.zeros(input_mask.shape)
+    for i in np.unique(input_mask):
+        mask = np.where(input_mask == i, 1, 0)
+        mask_dil = ndi.morphology.binary_dilation(mask, iterations=size)
+        mask_ero = ndi.morphology.binary_erosion(mask, iterations=size)
+        mask_border = np.logical_xor(mask_dil, mask_ero)
+        borders[mask_border] = i
+    output_mask = np.where(borders > 0, 2, input_mask > 0)
+    return output_mask
 
 
 def random_sample_generator(x_list, y_list, batch_size, bit_depth, img_size):
@@ -139,7 +167,7 @@ def random_sample_generator(x_list, y_list, batch_size, bit_depth, img_size):
         - img_size (int): Size to crop images to.
     Returns:
         - Generator: List of augmented training examples of
-            size (batch_size, img_size, img_size, 1)
+            size (batch_size, img_size, img_size, 3)
     '''
 
     assert len(x_list) == len(y_list), 'Lists must be of equal size.'
@@ -151,7 +179,7 @@ def random_sample_generator(x_list, y_list, batch_size, bit_depth, img_size):
 
         # Buffers for a batch of data
         x = np.zeros((batch_size, img_size, img_size, 1))
-        y = np.zeros((batch_size, img_size, img_size, 1))
+        y = np.zeros((batch_size, img_size, img_size, 3))
 
         # Get one image at a time
         for i in range(batch_size):
@@ -168,6 +196,9 @@ def random_sample_generator(x_list, y_list, batch_size, bit_depth, img_size):
             start_dim2 = np.random.randint(low=0, high=x_curr.shape[1] - img_size) if x_curr.shape[1] > img_size else 0
             patch_x = x_curr[start_dim1:start_dim1 + img_size, start_dim2:start_dim2 + img_size]
             patch_y = y_curr[start_dim1:start_dim1 + img_size, start_dim2:start_dim2 + img_size]
+
+            patch_y = _add_borders(patch_y)
+            patch_y = tf.keras.utils.to_categorical(patch_y)
 
             rand_flip = np.random.randint(low=0, high=2)
             rand_rotate = np.random.randint(low=0, high=4)
@@ -188,7 +219,7 @@ def random_sample_generator(x_list, y_list, batch_size, bit_depth, img_size):
 
             # Save image to buffer
             x[i, :, :, 0] = patch_x
-            y[i, :, :, 0] = patch_y
+            y[i, :, :, 0:3] = patch_y
 
         # Return the buffer
         yield(x, y)
@@ -206,19 +237,14 @@ def single_data_from_images(x_list, y_list, batch_size, bit_depth, img_size):
         - img_size (int): Size to crop images to.
     Returns:
         - Generator: List of augmented training examples of
-            size (batch_size, img_size, img_size, 1)
+            size (batch_size, img_size, img_size, 3)
     '''
-
-    assert len(x_list) == len(y_list), 'Lists must be of equal size.'
-    assert len(x_list) != 0, 'Lists must contain values.'
-    assert type(x_list[0]) == str, 'Lists must contain strings.'
-    assert (type(batch_size), type(bit_depth), type(img_size)) == (int, int, int)
 
     while True:
 
         # Buffers for a batch of data
         x = np.zeros((batch_size, img_size, img_size, 1))
-        y = np.zeros((batch_size, img_size, img_size, 1))
+        y = np.zeros((batch_size, img_size, img_size, 3))
 
         # Get one image at a time
         for i in range(batch_size):
@@ -236,9 +262,12 @@ def single_data_from_images(x_list, y_list, batch_size, bit_depth, img_size):
             patch_x = x_curr[start_dim1:start_dim1 + img_size, start_dim2:start_dim2 + img_size]
             patch_y = y_curr[start_dim1:start_dim1 + img_size, start_dim2:start_dim2 + img_size]
 
+            patch_y = _add_borders(patch_y)
+            patch_y = tf.keras.utils.to_categorical(patch_y)
+
             # Save image to buffer
             x[i, :, :, 0] = patch_x
-            y[i, :, :, 0] = patch_y
+            y[i, :, :, 0:3] = patch_y
 
         # Return the buffer
         yield(x, y)
@@ -261,14 +290,14 @@ def main():
     model.summary()
 
     # Compile model
-    loss = tf.keras.losses.binary_crossentropy
-    metrics = [tf.keras.metrics.binary_accuracy]
+    loss = tf.keras.losses.categorical_crossentropy
+    metrics = [tf.keras.metrics.categorical_accuracy]
     optimizer = tf.keras.optimizers.Adam(lr=0.0001)
 
     model.compile(loss=loss, metrics=metrics, optimizer=optimizer)
 
     # Callbacks
-    model_name = f"./models/{datetime.date.today().strftime('%Y%m%d')}_binary"
+    model_name = f"./models/{datetime.date.today().strftime('%Y%m%d')}_categorical"
     callbacks = [tf.keras.callbacks.ModelCheckpoint(f'{model_name}.h5', save_best_only=True),
                  tf.keras.callbacks.CSVLogger(filename=f'{model_name}.csv'),
                  tf.keras.callbacks.TensorBoard(model_name)]
