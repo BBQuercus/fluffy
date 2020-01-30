@@ -39,9 +39,9 @@ conda activate tf
 
 
 
-### Data availability
+### Data and model availability
 
-All training and testing data (not including raw files) can be found as `.npy` files [here](link). Please place these files into the `data/processed/` directory for the workflow to function properly.
+All pretrained models used in the inference notebook can be found [here](https://www.dropbox.com/sh/5ffku4w4n52urbj/AADAACaMf3wEDyNfWOjdi9BOa?dl=0).
 
 
 
