@@ -11,6 +11,7 @@ model_categorical = None
 
 
 def _next_power(x, k=2):
+    ''' Calculates x's next higher power of k. '''
     y, power = 0, 1
     while y < x:
         y = k**power
@@ -19,8 +20,7 @@ def _next_power(x, k=2):
 
 
 def predict_otsu(image, add_instances=False):
-    '''
-    '''
+    ''' Returns an Otsu filter based prediction of an image. '''
     thresh_otsu = skimage.filters.threshold_otsu(image)
     pred = image > thresh_otsu
 
@@ -36,8 +36,7 @@ def predict_otsu(image, add_instances=False):
 
 
 def predict_binary(image, model, bit_depth=16):
-    '''
-    '''
+    ''' Returns a binary model based prediction of an image. '''
     pred = image * (1./(2**bit_depth - 1))
     pad_bottom = _next_power(pred.shape[0]) - pred.shape[0]
     pad_right = _next_power(pred.shape[1]) - pred.shape[1]
@@ -49,6 +48,17 @@ def predict_binary(image, model, bit_depth=16):
 
 def predict_categorical(image, model, add_instances=False, bit_depth=16):
     '''
+    Returns an categorical model based prediction of an image.
+
+    Args:
+        - image (np.ndarray): Image to be predicted.
+        - model (tf.keras.models.Model): Model used to predict the image.
+        - add_instances (bool): Optional separation of instances.
+    Returns:
+        - pred (np.ndarray): One of two predicted images:
+            - If add_instances is False the unthresholded foreground.
+            - If add_instances is True thresholded instances.
+
     '''
     # Prediction
     pred = image * (1./(2**bit_depth - 1))
@@ -69,7 +79,7 @@ def predict_categorical(image, model, add_instances=False, bit_depth=16):
     water = skimage.morphology.watershed(curr_img, markers=markers, mask=mask)
     mask_new = []
     for i in np.unique(water):
-        mask_curr = water==i
+        mask_curr = water == i
         mask_curr = ndi.binary_erosion(mask_curr, iterations=2)
         mask_new.append(mask_curr * i)
     pred = np.argmax(mask_new, axis=0)
@@ -78,6 +88,7 @@ def predict_categorical(image, model, add_instances=False, bit_depth=16):
 
 
 def evaluate_accuracy(y_true, y_pred):
+    ''' Calculates the keras metric binary accuracy. '''
     y_true = y_true > 0
     m = tf.keras.metrics.BinaryAccuracy()
     m.update_state(y_true, y_pred)
@@ -85,6 +96,7 @@ def evaluate_accuracy(y_true, y_pred):
 
 
 def evaluate_auc(y_true, y_pred):
+    ''' Calculates the keras metric area under curve. '''
     y_true = y_true > 0
     m = tf.keras.metrics.AUC(num_thresholds=3)
     m.update_state(y_true, y_pred)
@@ -92,6 +104,7 @@ def evaluate_auc(y_true, y_pred):
 
 
 def evaluate_mse(y_true, y_pred):
+    ''' Calculates the keras metric mean squared error. '''
     y_true = y_true > 0
     m = tf.keras.metrics.MeanSquaredError()
     m.update_state(y_true, y_pred)
@@ -99,6 +112,7 @@ def evaluate_mse(y_true, y_pred):
 
 
 def evaluate_iou(y_true, y_pred, threshold=0.5):
+    ''' Calculates the keras metric intersection over union. '''
     y_true = y_true > 0
     y_pred = y_pred > threshold
     m = tf.keras.metrics.MeanIoU(num_classes=2)
@@ -108,6 +122,7 @@ def evaluate_iou(y_true, y_pred, threshold=0.5):
 
 
 def evaluate_all(y_true, y_pred):
+    ''' Prints the values of all defined metrics. '''
     metrics = [evaluate_accuracy, evaluate_auc, evaluate_mse, evaluate_iou]
     metrics_name = ['Accuracy', 'AUC', 'MSE', 'IOU']
 
@@ -116,6 +131,16 @@ def evaluate_all(y_true, y_pred):
 
 
 def compare_methods(image, mask, model_binary, model_categorical):
+    '''
+    Compares Otsu, Binary, and Categorical predictions across all
+    defined metrics and prints the results.
+
+    Args:
+        - image (np.ndarray): Image to be used for comparison.
+        - mask (np.ndarray): Ground truth mask.
+        - model_binary (tf.keras.models.Model): Binary prediction model.
+        - model_categorical (tf.keras.models.Model): Categorical prediction model.
+    '''
     names = ['Otsu', 'Binary', 'Categorical']
     predictions = [predict_otsu(image),
                    predict_binary(image, model_binary),
