@@ -15,6 +15,7 @@ Reproducible deep learning based segmentation of biomedical images.
 - Data availability
 - Training the model
 - Inferencing with existing model
+- Roadmap
 
 
 
@@ -100,7 +101,6 @@ pip install -r requirements.txt
 ```
 
 
-
 ### Data availability
 
 Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory.
@@ -114,9 +114,9 @@ Once the local environment was set up according to the instructions above, the m
 ```bash
 cd src/models/
 # Binary model
-python train_model.py --type='binary'
+python train_model.py --model_type='binary' --model_name='i_love_bits'
 # Categorical model
-python train_model.py --type='categorical'
+python train_model.py --model_type='categorical' --model_name='i_love_cats'
 ```
 
 
@@ -125,7 +125,16 @@ python train_model.py --type='categorical'
 
 All pretrained models used in the inference notebook can be found [here](https://www.dropbox.com/sh/5ffku4w4n52urbj/AADAACaMf3wEDyNfWOjdi9BOa?dl=0). Follow along the notebook `1.0-be-inference.ipynb` to test one of the models.
 
+
+
+### Roadmap
+
+- Add documentation on how to use pytest, makefile, setup, etc.
+- Distribute script across simpler files
+- Convert everything to a metaflow pipeline allowing for easy hyperparameter search, crossvalidation etc
+
+
+
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
-

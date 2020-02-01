@@ -99,15 +99,24 @@ def test_train_valid_split():
 def test_standard_unet():
     input_size = 128
     try:
-        model = standard_unet(input_size)
+        model = standard_unet(binary=True, input_size=input_size)
+        assert type(model) == tf.keras.models.Model
+        assert model.layers[0].output_shape == [(None, input_size, input_size, 1)]
+        assert model.layers[-1].output_shape == (None, input_size, input_size, 1)
+    except Exception:
+        assert False
+    try:
+        model = standard_unet(binary=False, input_size=input_size)
         assert type(model) == tf.keras.models.Model
         assert model.layers[0].output_shape == [(None, input_size, input_size, 1)]
         assert model.layers[-1].output_shape == (None, input_size, input_size, 3)
     except Exception:
         assert False
 
+    with pytest.raises(TypeError):
+        standard_unet(binary='true')
     with pytest.raises(ValueError):
-        standard_unet(3)
+        standard_unet(input_size=3)
 
 
 def test_add_borders():
@@ -160,10 +169,10 @@ def test_random_sample_generator():
     assert type(random_sample_generator(english, spanish, True, 16, 16, 256)) == types.GeneratorType
 
     with pytest.raises(TypeError):
-        next(random_sample_generator(english, spanish, True, 'size', 'depth', 'size'))
+        next(random_sample_generator(english, spanish, True, True, 'size', 'depth', 'size'))
     with pytest.raises(TypeError):
-        next(random_sample_generator('list', spanish, True, 16, 16, 256))
+        next(random_sample_generator('list', spanish, True, True, 16, 16, 256))
     with pytest.raises(TypeError):
-        next(random_sample_generator(english, 1, True, 16, 16, 256))
+        next(random_sample_generator(english, 1, True, True, 16, 16, 256))
     with pytest.raises(ValueError):
-        next(random_sample_generator(english[:1], spanish[:2], True, 16, 16, 256))
+        next(random_sample_generator(english[:1], spanish[:2], True, True, 16, 16, 256))

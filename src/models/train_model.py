@@ -1,13 +1,14 @@
-import logging
-import glob
-import skimage
+import click
 import datetime
+import glob
+import logging
 import numpy as np
-import tensorflow as tf
 import scipy.ndimage as ndi
+import skimage
+import tensorflow as tf
 
 LOG_FORMAT = '%(levelname)s %(asctime)s - %(filename)s %(funcName)s %(lineno)s - %(message)s'
-logging.basicConfig(filename='./logs/train_model.log',
+logging.basicConfig(filename='./train_model.log',
                     level=logging.DEBUG,
                     format=LOG_FORMAT,
                     filemode='a')
@@ -67,16 +68,19 @@ def train_valid_split(x_list, y_list, valid_split=0.25):
     return x_train, x_valid, y_train, y_valid
 
 
-def standard_unet(input_size=None):
+def standard_unet(binary=True, input_size=None):
     '''
     Builds a UNet model for categorical segmentation of gray-scale images.
 
     Args:
-        - img_size (int, optional): Image size used to create the model,
+        - binary (bool): If returned model should be binary or categorical.
+        - img_size (int): Image size used to create the model,
             must be a power of two and greater than 32.
     Returns:
         - model (tf.keras.models.Model): UNet model for segmentation.
     '''
+    if not isinstance(binary, bool):
+        raise TypeError(f'binary must be bool but is {type(binary)}')
     if ((input_size is not None) and (input_size not in (2 ** np.arange(5, 20)))):
         raise ValueError(f'img_size must be None or a power of 2 and >32 but is {input_size}')
 
@@ -151,7 +155,13 @@ def standard_unet(input_size=None):
     y = tf.keras.layers.Conv2D(16, (3, 3), **option_dict_conv)(y)
     y = tf.keras.layers.Conv2D(16, (3, 3), **option_dict_conv)(y)
 
-    y = tf.keras.layers.Conv2D(3, (1, 1), activation='softmax')(y)
+    if binary:
+        channels = 1
+        activation = 'sigmoid'
+    else:
+        channels = 3
+        activation = 'softmax'
+    y = tf.keras.layers.Conv2D(channels, (1, 1), activation=activation)(y)
 
     model = tf.keras.models.Model(inputs=[x], outputs=[y])
 
@@ -263,13 +273,21 @@ def normalize_image(image, bit_depth=16):
 
 
 # TODO refactor to simpler function
-def random_sample_generator(x_list, y_list, augment, batch_size, bit_depth, crop_size):
+def random_sample_generator(
+    x_list, y_list,
+    binary=True,
+    augment=True,
+    batch_size=16,
+    bit_depth=16,
+    crop_size=256
+        ):
     '''
     Yields a generator for training examples with augmentation.
 
     Args:
         - x_list (list): List containing filepaths to all usable images.
         - y_list (list): List containing filepaths to all usable masks.
+        - binary (bool): If batches are for binary or categorical models.
         - augment (bool): If augmentation should be done.
         - batch_size (int): Size of one mini-batch.
         - bit_depth (int): Bit depth of images to normalize.
@@ -282,8 +300,8 @@ def random_sample_generator(x_list, y_list, augment, batch_size, bit_depth, crop
         raise TypeError(f'x_list, y_list must be list but are {type(x_list)}, {type(y_list)}')
     if not all(isinstance(y, str) for y in y_list):
         raise TypeError(f'Elements of y_list must be a str')
-    if not isinstance(augment, bool):
-        raise TypeError(f'augment must be bool but is {type(bool)}')
+    if not all(isinstance(i, bool) for i in [binary, augment]):
+        raise TypeError(f'binary, augment must be bool but is {type(binary)}, {type(augment)}')
     if not all(isinstance(i, int) for i in [batch_size, bit_depth, crop_size]):
         raise TypeError(f'batch_size, bit_depth, crop_size must be int but are {type(batch_size)}, {type(bit_depth)}, {type(crop_size)}')
     if len(x_list) != len(y_list):
@@ -291,11 +309,13 @@ def random_sample_generator(x_list, y_list, augment, batch_size, bit_depth, crop
     if len(x_list) < 0:
         raise ValueError('Lists must be longer than 0')
 
+    channels = 1 if binary else 3
+
     while True:
 
         # Buffers for a batch of data
         x = np.zeros((batch_size, crop_size, crop_size, 1))
-        y = np.zeros((batch_size, crop_size, crop_size, 3))
+        y = np.zeros((batch_size, crop_size, crop_size, channels))
 
         # Get one image at a time
         for i in range(batch_size):
@@ -308,8 +328,7 @@ def random_sample_generator(x_list, y_list, augment, batch_size, bit_depth, crop
 
             crop_x, crop_y = random_cropping(x_curr, y_curr, crop_size)
 
-            borders = True
-            if borders:
+            if not binary:
                 crop_y = add_borders(crop_y)
                 crop_y = tf.keras.utils.to_categorical(crop_y)
 
@@ -318,16 +337,29 @@ def random_sample_generator(x_list, y_list, augment, batch_size, bit_depth, crop
 
             # Save image to buffer
             x[i, :, :, 0] = crop_x
-            y[i, :, :, 0:3] = crop_y
+            if binary:
+                y[i, :, :, 0] = crop_y
+            else:
+                y[i, :, :, :channels] = crop_y
 
         # Return the buffer
         yield(x, y)
 
 
-def main():
-    ROOT = '../../data/ptrain_val/'
-    MODEL_NAME = f"./models/{datetime.date.today().strftime('%Y%m%d')}_model"
+@click.command()
+@click.option('--model_type', default='categorical', help='If model is binary or categorical.')
+@click.option('--name', default='model', help='Name of model.')
+def main(model_type, name):
+    if not all(isinstance(i, str) for i in [model_type, name]):
+        return TypeError(f'model_type, name must be str but are {type(model_type)}, {type(name)}')
+    if model_type not in ['binary', 'categorical']:
+        raise ValueError(f'model_type must be "binary" or "categorical" but is {model_type}.')
+
+    ROOT = '../../data/processed/train_val/'
+    MODEL_NAME = f"./models/{datetime.date.today().strftime('%Y%m%d')}_{name}"
+    BINARY = True if model_type == 'binary' else False
     IMG_SIZE = 256
+    log.info(f'Model_type is {model_type}')
 
     # Import paths
     x_list = sorted(glob.glob(f'{ROOT}images/*.tif'))
@@ -341,12 +373,16 @@ def main():
     log.info(f'x_valid - {x_valid}')
 
     # Build model
-    model = standard_unet()
+    model = standard_unet(binary=BINARY)
     log.info('Model built.')
 
     # Compile model
-    loss = tf.keras.losses.categorical_crossentropy
-    metrics = [tf.keras.metrics.categorical_accuracy]
+    if BINARY:
+        loss = tf.keras.losses.binary_crossentropy
+        metrics = [tf.keras.metrics.binary_accuracy]
+    else:
+        loss = tf.keras.losses.categorical_crossentropy
+        metrics = [tf.keras.metrics.categorical_accuracy]
     optimizer = tf.keras.optimizers.Adam(lr=0.0001)
     model.compile(loss=loss, metrics=metrics, optimizer=optimizer)
     log.info('Model compiled.')
@@ -361,13 +397,15 @@ def main():
     train_gen = random_sample_generator(
         x_list=x_train,
         y_list=y_train,
+        binary=BINARY,
         augment=True,
         batch_size=16,
         bit_depth=16,
         crop_size=IMG_SIZE)
     val_gen = random_sample_generator(
-        x_valid,
-        y_valid,
+        x_list=x_valid,
+        y_list=y_valid,
+        binary=BINARY,
         augment=False,
         batch_size=16,
         bit_depth=16,
@@ -383,7 +421,7 @@ def main():
                                   validation_steps=20,
                                   callbacks=callbacks,
                                   verbose=2)
-    log.info('Training finished sucessfuly.')
+    log.info('Training finished sucessfully :).')
 
 
 if __name__ == "__main__":
