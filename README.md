@@ -9,13 +9,11 @@ Reproducible deep learning based segmentation of biomedical images.
 
 ## Overview
 
-- Project Organization
-- Why use my workflow?
-- System requirements and installation
-- Data availability
-- Training the model
-- Inferencing with existing model
-- Roadmap
+- [Project Organization](#project-organizaion)
+- [Why use my workflow?](#why-use-my-workflow?)
+- [System requirements and installation](#system-requirements-and-installation)
+- [Data availability](#data-availablilty)
+- [Training and inferencing](#training-and-inferencing)
 
 
 
@@ -25,19 +23,14 @@ Reproducible deep learning based segmentation of biomedical images.
     ├── Makefile           <- Makefile with commands like `make data` or `make train` (to follow)
     ├── README.md          <- The top-level README for developers using this project.
     ├── data (to follow, see below)
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details (to follow, for now use the manual)
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries (to follow, see below)
+    ├── models             <- Trained and serialized models, model predictions, or model summaries (see below)
     │
     ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
     │                         the creator's initials, and a short `-` delimited description, e.g.
     │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials. (to follow)
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
     │   └── figures        <- Generated graphics and figures to be used in reporting (to follow)
@@ -45,16 +38,20 @@ Reproducible deep learning based segmentation of biomedical images.
     ├── environment.yml    <- The conda environment file to reproduce the conda environment; see below
     ├── requirements.txt   <- The requirements file for reproducing the virtualenv environment; see github.com/pypa/virtualenv
     │
+    ├── manual.pdf         <- A extensive manual covering all topics of this workflow
+    │
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported (to follow)
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module
     │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
+    │   ├── data           <- Scripts to format, preprocess etc. labeled data
+    │   │   ├── makd_directories.py
+    │   │   ├── makd_labelling.py
+    │   │   └── make_label_maps.py
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
-    │   │   ├── predict_model.py (to follow)
+    │   │   ├── predict_model.py
     │   │   └── train_model.py
     │   │
     │   ├── tests       <- Scripts to test all other functionality using pytest
@@ -101,37 +98,21 @@ pip install -r requirements.txt
 ```
 
 
-### Data availability
 
-Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory.
+### Data and model availability
+
+Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory. Pretrained models can be found [here](https://www.dropbox.com/sh/5ffku4w4n52urbj/AADAACaMf3wEDyNfWOjdi9BOa?dl=0).
 
 
 
-### Training the model
+### Training and inferencing
 
-Once the local environment was set up according to the instructions above, the model can be trained by calling one of the following calls:
+For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy-guide/manual.pdf). For pythonistas among you - training information will be added shortly. For inference please call:
 
 ```bash
 cd src/models/
-# Binary model
-python train_model.py --model_type='binary' --model_name='i_love_bits'
-# Categorical model
-python train_model.py --model_type='categorical' --model_name='i_love_cats'
+python predict_model.py --model_file='path_to_model.h5' --image='path_to_folder_with_images'
 ```
-
-
-
-### Inferencing with existing model
-
-All pretrained models used in the inference notebook can be found [here](https://www.dropbox.com/sh/5ffku4w4n52urbj/AADAACaMf3wEDyNfWOjdi9BOa?dl=0). Follow along the notebook `1.0-be-inference.ipynb` to test one of the models.
-
-
-
-### Roadmap
-
-- Add documentation on how to use pytest, makefile, setup, etc.
-- Distribute script across simpler files
-- Convert everything to a metaflow pipeline allowing for easy hyperparameter search, crossvalidation etc
 
 
 

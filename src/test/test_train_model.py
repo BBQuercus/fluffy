@@ -11,12 +11,13 @@ sys.path.append(parentdir)
 from models.train_model import \
     train_valid_split, \
     shuffle_lists, \
-    standard_unet, \
+    unet, \
     add_borders, \
     add_augmentation, \
     random_cropping, \
     normalize_image, \
-    random_sample_generator
+    random_sample_generator, \
+    split_k_folds
 
 
 english = ['one', 'two', 'three']
@@ -61,6 +62,12 @@ mask_borders = np.array([[0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 
                 [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0]])
+k_folds_input = ['uno', 'dos', 'tres', 4, 5, 6, ('seven'), ['eight'], None, 1e-10]
+k_folds_output = [([2, 3, 4, 5, 6, 7, 8, 9], [0, 1]),
+                  ([0, 1, 4, 5, 6, 7, 8, 9], [2, 3]),
+                  ([0, 1, 2, 3, 6, 7, 8, 9], [4, 5]),
+                  ([0, 1, 2, 3, 4, 5, 8, 9], [6, 7]),
+                  ([0, 1, 2, 3, 4, 5, 6, 7], [8, 9])]
 
 
 def test_shuffle_lists():
@@ -96,17 +103,17 @@ def test_train_valid_split():
         train_valid_split(english, spanish, 1.8)
 
 
-def test_standard_unet():
+def test_unet():
     input_size = 128
     try:
-        model = standard_unet(binary=True, input_size=input_size)
+        model = unet(binary=True, input_size=input_size)
         assert type(model) == tf.keras.models.Model
         assert model.layers[0].output_shape == [(None, input_size, input_size, 1)]
         assert model.layers[-1].output_shape == (None, input_size, input_size, 1)
     except Exception:
         assert False
     try:
-        model = standard_unet(binary=False, input_size=input_size)
+        model = unet(binary=False, input_size=input_size)
         assert type(model) == tf.keras.models.Model
         assert model.layers[0].output_shape == [(None, input_size, input_size, 1)]
         assert model.layers[-1].output_shape == (None, input_size, input_size, 3)
@@ -114,9 +121,9 @@ def test_standard_unet():
         assert False
 
     with pytest.raises(TypeError):
-        standard_unet(binary='true')
+        unet(binary='true')
     with pytest.raises(ValueError):
-        standard_unet(input_size=3)
+        unet(input_size=3)
 
 
 def test_add_borders():
@@ -176,3 +183,7 @@ def test_random_sample_generator():
         next(random_sample_generator(english, 1, True, True, 16, 16, 256))
     with pytest.raises(ValueError):
         next(random_sample_generator(english[:1], spanish[:2], True, True, 16, 16, 256))
+
+
+def test_split_k_folds():
+    assert split_k_folds(5, k_folds_input) == k_folds_output

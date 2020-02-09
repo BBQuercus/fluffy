@@ -1,12 +1,21 @@
 import click
 import cv2
 import glob
+import logging
 import numpy as np
 import os
 import pathlib
 import scipy.ndimage as ndi
 import skimage.io
 import tensorflow as tf
+
+EXTENSIONS = ['.png', '.jpg', '.jpeg', '.stk', '.tif', '.tiff']
+LOG_FORMAT = '%(levelname)s %(asctime)s - %(filename)s %(funcName)s %(lineno)s - %(message)s'
+logging.basicConfig(filename='./model.log',
+                    level=logging.DEBUG,
+                    format=LOG_FORMAT,
+                    filemode='a')
+log = logging.getLogger()
 
 
 def _next_power(x, k=2):
@@ -76,7 +85,7 @@ def add_instances(pred_mask):
     if not pred_mask.ndim == 3:
         raise ValueError(f'pred_mask must have 3 dimensions but has {pred_mask.ndim}')
 
-    foreground_eroded = ndi.morphology.binary_erosion(pred_mask[..., 1] > 0.5, iterations=2)
+    foreground_eroded = ndi.binary_erosion(pred_mask[..., 1] > 0.5, iterations=2)
     markers = skimage.measure.label(foreground_eroded)
     background = 1-pred_mask[..., 0] > 0.5
     foreground = 1-pred_mask[..., 1] > 0.5
@@ -91,33 +100,48 @@ def add_instances(pred_mask):
 
 
 @click.command()
-@click.option('--model_file', type=str, required=True, help='Location of the h5 file with the model.')
-@click.option('--image_file', type=str, default=None, help='Name of model.')
-@click.option('--image_folder', type=str, default=None, help='Name of model.')
-def main(model_file, image_file, image_folder):
+@click.option('--model_file',
+              type=str,
+              prompt='Model file',
+              required=True,
+              help='Location of the h5 file with the model.')
+@click.option('--image',
+              type=click.Path(exists=True),
+              prompt='Image file/folder',
+              required=True,
+              help='Location of image file or folder.')
+def main(model_file, image):
+    if not all(isinstance(i, str) for i in [model_file, image]):
+        raise TypeError(f'model_file, image must be str but are {type(model_file), type(image)}.')
     if not model_file.endswith('.h5'):
-        raise ValueError('Model file not of type h5')
-    if (not image_file and not image_folder) or (image_file and image_folder):
-        raise ValueError('Must define either file or folder')
+        raise ValueError('model_file not of type h5.')
+    if not os.path.exists(image):
+        raise ValueError(f'image file/folder must exist. {image} does not.')
+    if (not os.path.isdir(image)) and (not any(image.endswith(i) for i in EXTENSIONS)):
+        raise ValueError(f'image file must be of type {EXTENSIONS}.')
+    log.info(f'Started with base_dir "{model_file}" and name "{image}".')
 
     # File checking
-    if image_folder:
-        extensions = ['png', 'jpg', 'jpeg', 'stk', 'tif', 'tiff']
-        file_names = sorted(glob.glob(f'{image_folder}/*.{extensions}'))
-    if image_file:
-        file_names = glob.glob(image_file)
+    if os.path.isdir(image):
+        file_names = sorted(glob.glob(f'{image}/*.{EXTENSIONS}'))
+    else:
+        file_names = glob.glob(image)
     if not file_names:
-        raise ValueError(f'Folder empty or no files of supported types: {extensions}')
+        raise ValueError(f'Folder empty or no files of supported types: {EXTENSIONS}')
+    log.info(f'Found files - {file_names}.')
 
     base_names = [pathlib.Path(f).stem for f in file_names]
-    base_folder = os.path.dirname(file_names[0])
-    os.makedirs(f'{base_folder}/predictions/', exist_ok=True)
+    dir_base = os.path.dirname(file_names[0])
+    dir_prediction = os.path.join(dir_base, 'predictions')
+    os.makedirs(dir_prediction, exist_ok=True)
+    log.info('Created prediction.')
 
     # Model import
     try:
         model = tf.keras.models.load_model(model_file)
     except Exception:
         raise TypeError(f'Model is not of type tf.keras.models')
+    log.info('Model loaded successfully.')
 
     # Predictions
     for i, file in enumerate(file_names):
@@ -126,9 +150,13 @@ def main(model_file, image_file, image_folder):
         except Exception:
             raise ValueError('Image failed to open check for proper formatting')
         if curr_img.ndim != 2:
-            raise ValueError(f'Image must have 2 dimensions but has {curr_img.ndim}')
+            raise ValueError(f'Image must be 2D but is {curr_img.ndim}D')
+        log.info(f'Image {file} loaded.')
         curr_pred = predict(curr_img, model)
-        skimage.io.imsave(f'{base_folder}/predictions/{base_names[i]}.png', curr_pred)
+        skimage.io.imsave(f'{dir_prediction}/{base_names[i]}.png', curr_pred)
+        log.info('Prediction saved.')
+
+    print('\U0001F3C1 Programm finished successfully \U0001F603 \U0001F3C1')
 
 
 if __name__ == "__main__":
