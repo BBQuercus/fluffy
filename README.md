@@ -9,10 +9,10 @@ Reproducible deep learning based segmentation of biomedical images.
 
 ## Overview
 
-- [Project Organization](#project-organizaion)
-- [Why use my workflow?](#why-use-my-workflow?)
+- [Project Organization](#project-organization)
+- [Why use my workflow?](#why-use-my-workflow)
 - [System requirements and installation](#system-requirements-and-installation)
-- [Data availability](#data-availablilty)
+- [Data availability](#data-and-model-availablilty)
 - [Training and inferencing](#training-and-inferencing)
 
 
@@ -24,11 +24,11 @@ Reproducible deep learning based segmentation of biomedical images.
     ├── README.md          <- The top-level README for developers using this project.
     ├── data (to follow, see below)
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details (to follow, for now use the manual)
+    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details (to follow, for now, use the manual)
     │
     ├── models             <- Trained and serialized models, model predictions, or model summaries (see below)
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
+    ├── notebooks          <- Jupyter notebooks. The naming convention is a number (for ordering),
     │                         the creator's initials, and a short `-` delimited description, e.g.
     │                         `1.0-jqp-initial-data-exploration`.
     │
@@ -44,9 +44,9 @@ Reproducible deep learning based segmentation of biomedical images.
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module
     │   │
-    │   ├── data           <- Scripts to format, preprocess etc. labeled data
-    │   │   ├── makd_directories.py
-    │   │   ├── makd_labelling.py
+    │   ├── data           <- Scripts to format, preprocess, etc. labeled data
+    │   │   ├── make_directories.py
+    │   │   ├── make_labelling.py
     │   │   └── make_label_maps.py
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
@@ -57,7 +57,7 @@ Reproducible deep learning based segmentation of biomedical images.
     │   ├── tests       <- Scripts to test all other functionality using pytest
     │   │   └── test_train_model.py
     │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations (to follow, currently as notebook)
+    │   └── visualization  <- Scripts to create exploratory and results-oriented visualizations (to follow, currently as notebook)
     │       └── visualize.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org (to follow, currently in src/tests)
@@ -68,7 +68,7 @@ Reproducible deep learning based segmentation of biomedical images.
 
 My proposed workflow is still in development and will be improved as we speak. Here a quick rundown of the main features:
 
-- Only well maintained packages used (numpy, pandas, tensorflow, scikit-image, opencv-python)
+- Only well-maintained packages used (numpy, pandas, tensorflow, scikit-image, opencv-python)
 - Extensive testing to make sure no error gets left unchecked
 - Simple usage
 - Not so bad results almost guaranteed ^^
