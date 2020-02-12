@@ -13,7 +13,7 @@ Reproducible deep learning based segmentation of biomedical images.
 - [Why use my workflow?](#why-use-my-workflow)
 - [Results](#results)
 - [System requirements and installation](#system-requirements-and-installation)
-- [Data availability](#data-and-model-availablilty)
+- [Data and model availability](#data-and-model-availability)
 - [Training and inferencing](#training-and-inferencing)
 - [Roadmap](#roadmap)
 
@@ -50,7 +50,7 @@ Reproducible deep learning based segmentation of biomedical images.
     │   │   └── train_model.py
     │   │
     │   ├── tests          <- Scripts to test all other functionality using pytest
-    │   │   └── test_train_model.py
+    │       └── test_train_model.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
 
@@ -69,9 +69,9 @@ My proposed workflow is still in development and will be improved as we speak. H
 
 ### Results
 
-* Nuclear segmentation using the categorical model providing a class to separate nuclei.![nuclei](./data/example_nucleus.pdf)
+* Nuclear segmentation using the categorical model providing a class to separate nuclei. See [here](./data/example_nucleus.pdf).
 
-* Granular segmentation illustrating the selectivity of the model![granules](./data/example_granules.pdf)
+* Granular segmentation illustrating the selectivity of the model. See [here](./data/example_granules.pdf).
 
 
 
