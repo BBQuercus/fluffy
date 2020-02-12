@@ -48,7 +48,7 @@ def predict(image, model, add_instances=False, bit_depth=16):
         raise TypeError(f'')
     if not isinstance(bit_depth, int):
         raise TypeError(f'')
-    if not bit_depth == 0:
+    if bit_depth == 0:
         raise ZeroDivisionError(f'bit_depth must not be zero')
 
     model_output = model.layers[-1].output_shape[-1]

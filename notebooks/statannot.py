@@ -1,4 +1,8 @@
-# from matplotlib.text import Text
+'''
+Main file from https://github.com/webermarcolivier/statannot.
+Check out his awesome repo to add statistical annotations.
+'''
+
 import matplotlib.pyplot as plt
 from matplotlib import lines
 import matplotlib.transforms as mtransforms
