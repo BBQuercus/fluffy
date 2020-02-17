@@ -42,14 +42,18 @@ Reproducible deep learning based segmentation of biomedical images.
     │   ├── data           <- Scripts to format, preprocess, etc. labeled data
     │   │   ├── make_directories.py
     │   │   ├── make_labelling.py
+    │   │   ├── make_masks.ijm
     │   │   └── make_label_maps.py
     │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
+    │   ├── training       <- Scripts to train models models
+    │   │   ├── utils.py
     │   │   └── train_model.py
     │   │
-    │   ├── tests          <- Scripts to test all other functionality using pytest
+    │   ├── inference      <- Scripts to use the trained models
+    │   │   ├── predict_model.py
+    │   │   └── fluffy.py
+    │   │
+    │   └── testing        <- Scripts to test all other functionality using pytest (to follow)
     │       └── test_train_model.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
@@ -101,29 +105,33 @@ pip install -r requirements.txt
 
 ### Data and model availability
 
-Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory. Pretrained models can be found [here](https://www.dropbox.com/sh/5ffku4w4n52urbj/AADAACaMf3wEDyNfWOjdi9BOa?dl=0).
+Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory. Pretrained models are automatically downloaded within the streamlit interface.
 
 
 
 ### Training and inferencing
 
-For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy/manual.pdf). For pythonistas among you - training information will be added shortly. For inference please call:
+For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf). For pythonistas among you - training information will be added shortly. For inference please call:
 
 ```bash
-cd src/models/
-python predict_model.py --model_file='path_to_model.h5' --image='path_to_folder_with_images'
+# Locally
+cd src/inference/
+streamlit run fluffy.py
+
+# URL-based
+streamlit run https://raw.githubusercontent.com/bbquercus/fluffy/src/inference/fluffy.py
 ```
 
 
 
 ### Roadmap
 
-- [ ] Fully automated luigi pipeline for model training
-- [ ] Streamlit application for easy inferencing
+- [x] Streamlit application for easy inferencing
+- [ ] Fully automated metaflow pipeline for model training
 - [ ] Open sourcing of all training data and models
 - [ ] Makefile to download models
 - [ ] Addition of spot detection (in colaboration with @zhanyinx)
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience <br/> Title image designed by <a href="http://www.freepik.com">vectorpocket / Freepik</a></small></p>
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience <br/> Title image designed by <a href="http://www.freepik.com">vectorpocket / Freepik</a>.</small></p>
