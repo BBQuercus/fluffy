@@ -81,24 +81,24 @@ My proposed workflow is still in development and will be improved as we speak. H
 
 ### System requirements and installation
 
-This workflow uses two main elements:
+This workflow has two main functions:
 
-1. Code in this repository
-2. Conda package manager (see [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/))
+* Training your own models
+* Inferencing via the fluffy interface
 
-
-Set up your environment using the following commands:
+These two parts have different requirements:
 
 ```bash
+# For training
 git clone -b v1 https://github.com/bbquercus/fluffy
 cd fluffy
-
-# Conda
 conda env create -f environment.yml
 conda activate fluffy
 
-# Pip
-pip install -r requirements.txt
+# For inferencing
+docker pull bbquercus/fluffy
+docker run -p 8501:8501 bbquercus/fluffy
+# Visit localhost:8501
 ```
 
 
@@ -111,23 +111,16 @@ Data is currently not available but all annotated images will be released after 
 
 ### Training and inferencing
 
-For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf). For pythonistas among you - training information will be added shortly. For inference please call:
+For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf). For pythonistas among you - training information will be added shortly.
 
-```bash
-# Locally
-cd src/inference/
-streamlit run fluffy.py
 
-# URL-based
-streamlit run https://raw.githubusercontent.com/bbquercus/fluffy/src/inference/fluffy.py
-```
 
 
 
 ### Roadmap
 
 - [x] Streamlit application for easy inferencing
-- [ ] Fully automated metaflow pipeline for model training
+- [x] Fully automated metaflow pipeline for model training
 - [ ] Open sourcing of all training data and models
 - [ ] Makefile to download models
 - [ ] Addition of spot detection (in colaboration with @zhanyinx)

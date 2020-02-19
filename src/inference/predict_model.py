@@ -1,3 +1,7 @@
+'''
+Note: this file is was not updated since 28.01.2020. Use the streamlit code for now.
+'''
+
 import click
 import cv2
 import glob
@@ -29,7 +33,7 @@ def _next_power(x, k=2):
 
 def predict(image, model, add_instances=False, bit_depth=16):
     '''
-    Returns an binary or categorical model based prediction of an image.
+    Returns a binary or categorical model based prediction of an image.
 
     Args:
         - image (np.ndarray): Image to be predicted.
