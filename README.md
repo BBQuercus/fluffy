@@ -34,6 +34,7 @@ Reproducible deep learning based segmentation of biomedical images.
     │                         `1.0-jqp-initial-data-exploration`.
     │
     ├── environment.yml    <- The conda environment file to reproduce the conda environment; see below
+    ├── environment_gpu.yml <- Same conda environment file for gpus
     ├── requirements.txt   <- The requirements file for reproducing the virtualenv environment; see github.com/pypa/virtualenv
     │
     ├── src                <- Source code for use in this project.
@@ -64,7 +65,7 @@ Reproducible deep learning based segmentation of biomedical images.
 
 My proposed workflow is still in development and will be improved as we speak. Here a quick rundown of the main features:
 
-- Only well-maintained packages used (numpy, pandas, tensorflow, scikit-image, opencv-python)
+- Only well-maintained packages used (numpy, tensorflow, scikit-image, opencv-python)
 - Extensive testing to make sure no error gets left unchecked
 - Simple usage
 - Not so bad results almost guaranteed
@@ -97,7 +98,8 @@ conda activate fluffy
 
 # For inferencing
 docker pull bbquercus/fluffy
-docker run -p 8501:8501 bbquercus/fluffy
+docker run -p 8501:8501 -v /FOLDER/:/FOLDER/ bbquercus/fluffy
+# Substitute FOLDER with the root file directory
 # Visit localhost:8501
 ```
 
@@ -111,9 +113,7 @@ Data is currently not available but all annotated images will be released after 
 
 ### Training and inferencing
 
-For a detailed guide, please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf). For pythonistas among you - training information will be added shortly.
-
-
+Please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf).
 
 
 
