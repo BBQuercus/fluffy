@@ -1,6 +1,5 @@
-streamlit==0.48
-
+metaflow==2.0.2
+scikit-optimize==0.7.1
 tensorflow==2.0.1
-opencv-python==4.2.0.32
 scikit-image==0.16.2
-gdown==3.10.1
+scipy==1.4.1

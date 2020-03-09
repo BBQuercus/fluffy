@@ -1,4 +1,4 @@
-![fluffy](./data/fluffy.jpg)
+![fluffy](./data/fluffy_header.png)
 
 Fluffy
 ==============================
@@ -25,39 +25,39 @@ Reproducible deep learning based segmentation of biomedical images.
     ├── Makefile           <- Makefile with commands like `make data` or `make train` (to follow)
     ├── README.md          <- The top-level README for developers using this project.
     │
-    ├── data               <- Only for README or notebook access. For training data read below.
+    ├── data/              <- Only for README or notebook access. For training data read below.
     │
-    ├── docs               <- Currently home to the manual.
+    ├── docs/              <- Home to the manual.
     │
-    ├── notebooks          <- Jupyter notebooks. The naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
+    ├── Dockerfile         <- Dockerfile for the fluffy interface.
     ├── environment.yml    <- The conda environment file to reproduce the conda environment; see below
-    ├── environment_gpu.yml <- Same conda environment file for gpus
+    ├── environment_gpu.yml <- Same conda environment file for GPUs
     ├── requirements.txt   <- The requirements file for reproducing the virtualenv environment; see github.com/pypa/virtualenv
     │
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
+    ├── src/               <- Source code for use in this project.
     │   │
-    │   ├── data           <- Scripts to format, preprocess, etc. labeled data
+    │   ├── data/          <- Scripts to format, preprocess, etc. labeled data
     │   │   ├── make_directories.py
     │   │   ├── make_labelling.py
     │   │   ├── make_masks.ijm
     │   │   └── make_label_maps.py
     │   │
-    │   ├── training       <- Scripts to train models models
-    │   │   ├── utils.py
-    │   │   └── train_model.py
+    │   ├── training/      <- Scripts to train models models
+    │   │   ├── config.py
+    │   │   ├── data.py
+    │   │   ├── dirtools.py
+    │   │   ├── metrics.py
+    │   │   ├── models.py
+    │   │   ├── train_model.py <- Fully automated pipeline
+    │   │   └── train_simple.py <- Simple script for quick prototyping
     │   │
-    │   ├── inference      <- Scripts to use the trained models
-    │   │   ├── predict_model.py
-    │   │   └── fluffy.py
+    │   ├── inference/     <- CLI to use the trained models
+    │   │   └── predict_model.py
     │   │
-    │   └── testing        <- Scripts to test all other functionality using pytest (to follow)
+    │   └── testing/       <- Scripts to test all other functionality using pytest (to follow)
     │       └── test_train_model.py
     │
-    └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
+    └── web/               <- Fluffy interface. Flask application used in the docker container.
 
 
 
@@ -65,9 +65,9 @@ Reproducible deep learning based segmentation of biomedical images.
 
 My proposed workflow is still in development and will be improved as we speak. Here a quick rundown of the main features:
 
-- Only well-maintained packages used (numpy, tensorflow, scikit-image, opencv-python)
+- Only well-maintained packages used (numpy, tensorflow, scikit-image)
 - Extensive testing to make sure no error gets left unchecked
-- Simple usage
+- Simple usage via the fluffy interface
 - Not so bad results almost guaranteed
 
 
@@ -82,49 +82,42 @@ My proposed workflow is still in development and will be improved as we speak. H
 
 ### System requirements and installation
 
-This workflow has two main functions:
-
-* Training your own models
-* Inferencing via the fluffy interface
-
-These two parts have different requirements:
-
+For training and CLI based inferencing:
 ```bash
-# For training
 git clone -b v1 https://github.com/bbquercus/fluffy
 cd fluffy
 conda env create -f environment.yml
 conda activate fluffy
+```
 
-# For inferencing
-docker pull bbquercus/fluffy
-docker run -p 8501:8501 -v /FOLDER/:/FOLDER/ bbquercus/fluffy
-# Substitute FOLDER with the root file directory
-# Visit localhost:8501
+To use the fluffy interface:
+```bash
+# Replace with the latest version at hub.docker.com/r/bbquercus/fluffy  
+docker pull bbquercus/fluffy:VERSION
+docker run -p 5000:5000 bbquercus/fluffy:VERSION
+# Visit localhost:5000
 ```
 
 
 
 ### Data and model availability
 
-Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory. Pretrained models are automatically downloaded within the streamlit interface.
+Data is currently not available but all annotated images will be released after enough testing was performed. Once published, the makefile will automatically download data to the `data` directory. Pretrained models are automatically downloaded within the interface.
 
 
 
 ### Training and inferencing
 
-Please read the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf).
+To inference, a fluffy interface is available through docker.
+Training and CLI based inferencing can be done within a conda environment.
+Both options are described in the extensive [manual](https://github.com/bbquercus/fluffy/docs/manual.pdf).
 
 
 
 ### Roadmap
 
-- [x] Streamlit application for easy inferencing
+- [x] Flask application for easy inferencing
 - [x] Fully automated metaflow pipeline for model training
 - [ ] Open sourcing of all training data and models
 - [ ] Makefile to download models
-- [ ] Addition of spot detection (in colaboration with @zhanyinx)
-
---------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience <br/> Title image designed by <a href="http://www.freepik.com">vectorpocket / Freepik</a>.</small></p>
+- [ ] Addition of spot detection (in collaboration with @zhanyinx)

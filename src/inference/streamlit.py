@@ -1,9 +1,16 @@
+'''
+NOTE - 20200309
+This was an experimental setup and was used in fluffy v0.1.
+This file is no longer maintained but can be used as future reference.
+'''
+
 import cv2
 import gdown
 import glob
 import numpy as np
 import os
 import re
+import czifile as czi
 import skimage.io
 import skimage.measure
 import skimage.morphology
@@ -13,7 +20,7 @@ import scipy.ndimage as ndi
 import tensorflow as tf
 from matplotlib import cm
 
-EXTENSIONS = ['.png', '.jpg', '.jpeg', '.stk', '.tif', '.tiff']
+EXTENSIONS = ['.png', '.jpg', '.jpeg', '.stk', '.tif', '.tiff', '.czi']
 FLUFFY = '1rlkA0qzP1Z023_VZjYN_LsIcr4Wvl846'
 MODEL_IDS = {
     'None': None,
@@ -21,8 +28,8 @@ MODEL_IDS = {
     'Nuclear Instances': '166rnQYPQmzewIAjrbU7Ye-BhFotq2wnA',
     'Stress-Granules': '1SjjG4FbU9VkKTlN0Gvl7AsfiaoBKF7DB',
     'Cytoplasm (SunTag Background)': '1pVhyF81T4t7hh16dYKT3uJa5WCUQUI6X',
-    'P-Bodies': None,
-    'Spots': None
+    # 'P-Bodies': None,
+    # 'Spots': None
 }
 
 s1_checkpoint = True
@@ -38,8 +45,8 @@ def adaptive_import(file):
     if file.endswith('.jpg'):
         image = cv2.imread(file).squeeze()
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # elif s1_file.endswith('.czi'):
-    #     image = czi.imread(s1_file)
+    elif s1_file.endswith('.czi'):
+        image = czi.imread(s1_file).squeeze()
     else:
         image = skimage.io.imread(file).squeeze()
     return image
@@ -299,9 +306,9 @@ if s3_checkpoint:
 
     if not model_type == 'None':
         model_id = MODEL_IDS[model_type]
-        model_file = f'./fluffy_tmp/{model_id}.h5'
+        model_file = f'./tmp/{model_id}.h5'
         if not os.path.exists(model_file):
-            os.makedirs('./fluffy_tmp', exist_ok=True)
+            os.makedirs('./tmp', exist_ok=True)
             model_file = gdown.download(f'https://drive.google.com/uc?id={model_id}', model_file)
         model = tf.keras.models.load_model(model_file)
         st.success('Model loaded successfully.')
@@ -370,7 +377,7 @@ st.markdown('''
         publisher = {GitHub},
         journal = {GitHub repository},
         howpublished = {\\url{https://github.com/bbquercus/fluffy}},
-        commit = {4f57d6a0e4c030202a07a60bc1bb1ed1544bf679}}
+        commit = {59943d0966f9caebfb9bc94a6c08fa905778a6d3}}
     ```
     For assistance or to report bugs, please raise an issue on [GitHub](https://github.com/bbquercus/fluffy/issues).
 
