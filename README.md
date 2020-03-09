@@ -22,7 +22,6 @@ Reproducible deep learning based segmentation of biomedical images.
 ### Project Organization
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train` (to follow)
     ├── README.md          <- The top-level README for developers using this project.
     │
     ├── data/              <- Only for README or notebook access. For training data read below.
