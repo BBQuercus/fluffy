@@ -1,0 +1,7 @@
+tensorflow==2.1.0
+Flask==1.1.1
+gdown==3.10.1
+scikit-image==0.16.2
+scipy==1.4.1
+matplotlib==3.1.3
+tifffile==2020.2.16

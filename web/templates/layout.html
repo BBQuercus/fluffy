@@ -1,0 +1,89 @@
+<html lang="en" class="h-100">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="{{ url_for('static', filename='images/logo_transparent.png') }}">
+
+  <!-- Bootstrap style -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
+
+  <!-- Custom style -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/glider.css') }}">
+
+  <!-- CDN imports -->
+  <script src="{{ url_for('static', filename='js/popper.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bootstrap.js') }}" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='js/wheelzoom.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/glider.js') }}"></script>
+
+  <!-- Custom scripts -->
+  <script src="{{ url_for('static', filename='js/cookieMonster.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/fileDisplay.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/formValidation.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/imageDisplay.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+  {% if title %}
+  <title>Fluffy - {{ title }}</title>
+  {% else %}
+  <title>Fluffy</title>
+  {% endif %}
+
+  {% block head %}{% endblock %}
+</head>
+
+<body body="d-flex flex-column h-100">
+
+  {% if not landing %}
+  <header role="heading">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+
+      <a class="navbar-brand" href="{{ url_for('index') }}">
+        <img class="d-inline-block align-center" src="{{ url_for('static', filename='images/logo_transparent.png') }}"
+          style="height: 100px;" alt="Logo">
+        Fluffy
+      </a>
+
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div id="navbarNav" class="collapse navbar-collapse">
+        <ul class="navbar-nav ml">
+          <li id="nav-item-single" class="nav-item">
+            <a class="nav-link" href="{{ url_for('single') }}">Single Image</a>
+          </li>
+          <li id="nav-item-batch" class="nav-item">
+            <a class="nav-link" href="{{ url_for('batch') }}">Batch Processing</a>
+          </li>
+          <li id="nav-item-help" class="nav-item">
+            <a class="nav-link" href="{{ url_for('help') }}">Help</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+  {% endif %}
+
+  <main role="main" class="flex-shrink-0">
+    <div class="container">
+      {% block body %}{% endblock %}
+    </div>
+  </main>
+
+  {% if not landing %}
+  <div class="push"></div>
+  <footer class="footer fixed-bottom">
+    <div class="container">
+      <span class="text-muted">&copy; 2020 <a href="mailto:bastian.eichenberger@fmi.ch?subject=Regarding Fluffy..." >Bastian Th. Eichenberger</a></span>
+    </div>
+  </footer>
+  {% endif %}
+
+</body>
+</html>

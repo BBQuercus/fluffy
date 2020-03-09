@@ -1,0 +1,115 @@
+{% extends 'layout.html' %}
+
+
+{% block body %}        
+    <div class="row">
+        <div class="col-4">
+        <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+            <a class="nav-link nav-usage active" id="v-pills-single-image-tab" data-toggle="pill" href="#v-pills-single-image" role="tab" aria-controls="v-pills-home" aria-selected="true">👁️ Single Image</a>
+            <a class="nav-link nav-usage" id="v-pills-batch-prediction-tab" data-toggle="pill" href="#v-pills-batch-prediction" role="tab" aria-controls="v-pills-profile" aria-selected="false">🏟️ Batch Processing</a>
+            <a class="nav-link nav-usage" id="v-pills-image-import-tab" data-toggle="pill" href="#v-pills-image-import" role="tab" aria-controls="v-pills-messages" aria-selected="false">📁 Image Import</a>
+            <a class="nav-link nav-usage" id="v-pills-image-type-tab" data-toggle="pill" href="#v-pills-image-type" role="tab" aria-controls="v-pills-settings" aria-selected="false">📷 Image Type</a>
+            <a class="nav-link nav-usage" id="v-pills-model-type-tab" data-toggle="pill" href="#v-pills-model-type" role="tab" aria-controls="v-pills-settings" aria-selected="false">🔮 Model Type</a>
+            <a class="nav-link nav-usage" id="v-pills-custom-training-tab" data-toggle="pill" href="#v-pills-custom-training" role="tab" aria-controls="v-pills-settings" aria-selected="false">👷‍♂️ Custom Models</a>
+            <a class="nav-link nav-usage" id="v-pills-pills-bugs" data-toggle="pill" href="#v-pills-bugs" role="tab" aria-controls="v-pills-settings" aria-selected="false">🐛 Bug Report</a>
+            <a class="nav-link nav-usage" id="v-pills-pills-citation-tab" data-toggle="pill" href="#v-pills-citation" role="tab" aria-controls="v-pills-settings" aria-selected="false">📖 How to cite?</a>
+        </div>
+        </div>
+        <div class="col-8">
+        <div class="tab-content" id="v-pills-tabContent">
+
+            <!-- Single image -->
+            <div id="v-pills-single-image" class="tab-pane fade show active" role="tabpanel" aria-labelledby="v-pills-single-image-tab">
+                The "Single Images" page can be used to test the performance of all available models.
+                Once the image and model type have been selected, the prediction can be inspected in detail.
+            </div>
+
+            <!-- Batch prediction -->
+            <div id="v-pills-batch-prediction" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-batch-prediction-tab">
+                The "Batch Processing" page is used to predict on many images in sequence.
+                Once all images are predicted, you can download them individually or in batch.
+            </div>
+
+            <!-- Image import -->
+            <div id="v-pills-image-import" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-image-import-tab">
+                Images can be selected through the interactive file browser. Currently supported file formats are:
+                <ul>
+                    <li>.jpg</li>
+                    <li>.jpeg</li>
+                    <li>.png</li>
+                    <li>.tif</li>
+                    <li>.tiff</li>
+                    <li>.stk</li>
+                </ul>
+            </div>
+
+            <!-- Image type -->
+            <div id="v-pills-image-type" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-image-type-tab">
+                There are four possible selections:
+                <ul>
+                    <li>One Frame (Grayscale or RGB): Select this if your image consists of a single slice and time frame.</li>
+                    <li>All Frames: This will predict on all images in a Time-Frame or Z-Stack.
+                        Due to the increase in computational expenses, only use it if objects are anisotropic and move alot.
+                        To simplify the viewing experience, this option is disabled on the "Single Image" page.
+                    </li>
+                    <li>Z-Stack: Selecting this will perform a maximum intensity projection on your image along the smallest axis.
+                        This is typically used for fixed cell images.
+                    </li>
+                    <li>Time-Frame: The final option will take one slice from a Time-Frame.
+                        This is typically used for short movies or when objects do not move alot.
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Model type -->
+            <div id="v-pills-model-type" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-model-type-tab">
+                The heart and soul of fluffy are the following models:
+                <ul>
+                    <li>Nuclear Semantic: Nuclear prediction (DAPI) without instances (true or false).</li>
+                    <li>Nuclear Instances: Same as above but labels for every individual nucleus.</li>
+                    <li>Stress-Granules: Semantic stress granule prediction.</li>
+                    <li>Cytoplasm (SunTag Background): Semantic cytoplasmic prediction.</li>
+                </ul>
+
+                The upcomming models will be:
+                <ul>
+                    <li>ER: Semantic endoplasmic reticulum prediction.</li>
+                    <li>P-Bodies: Semantic P-Body prediction.</li>
+                    <li>Spots: Coordinate prediction of diffraction limited spots.</li>
+                </ul>
+            </div>
+
+            <!-- Custom training -->
+            <div id="v-pills-custom-training" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-custom-training-tab">
+                Custom models can be trained by following the detailed explanation on how to use the CLI of fluffy.
+                The step by step instructions can be found <a href="https://github.com/BBQuercus/fluffy/blob/master/docs/manual.pdf" target="_blank">here</a>.
+                Training is very compute intensive so it is recommended to get GPU access.
+            </div>
+            
+            <!-- Bug report -->
+            <div id="v-pills-bugs" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-bugs">
+                <blockquote class="blockquote">
+                    <p class="mb-0">It’s not a bug – it’s an undocumented feature.</p>
+                    <footer class="blockquote-footer">Winston Churchill</footer>
+                </blockquote>
+                
+                No product is without undocumented features.
+                If you find one or come up with a possible feature, feel free to inform me <a href="https://github.com/BBQuercus/fluffy/issues" target="_blank">here</a>.
+            </div>
+
+            <!-- Citation -->
+            <div id="v-pills-citation" class="tab-pane fade" role="tabpanel" aria-labelledby="v-pills-citation-tab">
+                If you find fluffy to be useful, please cite my repository: <br><br>
+                <pre><code>@misc{Fluffy,
+    author = {Bastian Th., Eichenberger},
+    title = {Fluffy},
+    year = {2020},
+    publisher = {GitHub},
+    journal = {GitHub repository},
+    howpublished = {\url{https://github.com/bbquercus/fluffy}}
+                </code></pre>
+            </div>
+        </div>
+        </div>
+    </div>
+{% endblock body %}        

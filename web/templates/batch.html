@@ -1,0 +1,219 @@
+{% extends 'layout.html' %}
+
+
+{% block body %}
+<div class="row">
+    <div class="col-12" id="single-selection">
+        <h3>Selection</h3>
+
+        <form id="form-files">
+
+            <!-- File upload -->
+            <div class="form-group-addon custom-file">
+                <label id="file-uploader-label" class="custom-file-label" for="file-uploader">Upload Files</label>
+                <input id="file-uploader" type="file" name="file" class="custom-file-input form-control-file"
+                    accept=".jpg, .jpeg, .png, .tif, .tiff, .stk" multiple required>
+            </div>
+
+            <!-- Image selection -->
+            <div class="form-group mb-3">
+                <div class="form-group-prepend">
+                    <label class="form-group-text" for="image-type">Image Type</label>
+                </div>
+                <select id="image-type" name="image" class="custom-select" required>
+                    <option selected disabled value="">Choose...</option>
+                    {% for option in image_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Model selection -->
+            <div class="form-group mb-3">
+                <div class="form-group-prepend">
+                    <label class="form-group-text" for="model-type">Model Type</label>
+                </div>
+                <select id="model-type" name="model" class="custom-select" required>
+                    <option selected disabled value="">Choose...</option>
+                    {% for option in model_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Predict button -->
+            <button id="btn-predict" class="btn btn-light btn-block" type="submit" disabled>Predict</button>
+        </form>
+    </div>
+</div>
+
+<!-- Loading information -->
+<div class="row">
+    <div class="col-12">
+        <div hidden id="progress" class="container">
+            <div class="d-flex align-items-center">
+                <strong>Doing some fluffy calculus...</strong>
+                <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success message -->
+<div class="row">
+    <div class="col-12">
+        <div id="msg-success" class="alert alert-success" role="alert">
+            <button type="button" class="close" data-dismiss="alert">x</button>
+            Daaaaammm. Stuff just went down smooth and fluffy.
+        </div>
+    </div>
+</div>
+
+<!-- Failure message -->
+<div class="row">
+    <div class="col-12">
+        <div id="msg-failure" class="alert alert-danger" role="alert">
+            <button type="button" class="close" data-dismiss="alert">x</button>
+            God dammit. Something didn't work out as planned. Check your input, try again, or cry.
+        </div>
+    </div>
+</div>
+
+<!-- File lister -->
+<div hidden id="file-lister" class="row" style="margin-top: 2%;">
+    <div class="col-12" id="display-image">
+        <h3>File List</h3>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th id="btn-all"></th>
+                    <th scope="col">Filename</th>
+                </tr>
+            </thead>
+            <tbody id="file-list"></tbody>
+        </table>
+    </div>
+</div>
+
+
+<script>
+    $('#msg-success').hide();
+    $('#msg-failure').hide();
+
+    // Input validation
+    ['file-uploader', 'image-type', 'model-type'].forEach(function (id) {
+        $(`#${id}`).change(validateBatch);
+    });
+
+    // Use cookies to pre-populate selection
+    addSelectionActive('image-type', 'image_selection');
+    addSelectionActive('model-type', 'model_selection');
+
+    // File uploader
+    const fileLister = document.querySelector('#file-lister');
+    const fileUploader = document.querySelector('#file-uploader');
+    const btnPredict = document.querySelector('#btn-predict');
+    const table = document.querySelector('#file-list');
+    let fileList = new Object;
+    let uniqueid = 1;
+
+    $('#file-uploader').change(() => {
+        fileLister.removeAttribute('hidden');
+        for (let i = 0; i < fileUploader.files.length; i++) {
+            // TODO check if files already exist
+            const currFile = fileUploader.files[i];
+            fileList[uniqueid] = currFile;
+
+            // Single file delete buttons
+            const btnDel = updateFileList(currFile, uniqueid, table);
+            btnDel.addEventListener('click', () => {
+                const index = Number(btnDel.id.split('-').splice(-1)[0]);
+                table.removeChild(document.getElementById(`row-file-${index}`));
+                deleteFileOnServer(fileList[index].name);
+                delete fileList[index];
+                if (Object.size(fileList) === 0) {
+                    fileLister.setAttribute('hidden', 'true');
+                }
+                if (document.querySelector('#btn-download-all')) {
+                    document.querySelector('#btn-download-all').remove();
+                }
+            })
+            uniqueid++;
+        }
+
+        // All files delete button
+        const btnDelAll = makeDelButton('all');
+        const btnAll = document.querySelector('#btn-all');
+        if (btnAll.childNodes.length === 0) {
+            btnAll.appendChild(btnDelAll);
+        }
+        btnDelAll.addEventListener('click', () => {
+            window.location.replace('/delete_all/batch');
+        });
+    });
+
+    // POST request overwriting default form
+    $('#form-files').submit((e) => {
+        e.preventDefault();
+        startSpinner();
+        removeDownloadButtons(fileList);
+
+        let formData = new FormData();
+        let xhr = new XMLHttpRequest();
+        for (let key in fileList) {
+            formData.append('uuid', key);
+            formData.append('file', fileList[key]);
+        }
+        formData.append('image', document.querySelector('#image-type').value);
+        formData.append('model', document.querySelector('#model-type').value);
+        xhr.open('POST', '/predict_batch');
+        xhr.send(formData);
+
+        xhr.onload = function () {
+            stopSpinner();
+            if (xhr.status != 200) {
+                console.log(`Error ${xhr.status}: ${xhr.statusText}.`);
+                alertMessage('msg-failure', 8000);
+            } else {
+                let response = JSON.parse(xhr.response);
+                alertMessage('msg-success', 8000);
+
+                // Single file download buttons
+                let i = 0
+                for (let key in response) {
+                    const btnDownload = makeDownloadButton(key);
+                    $('#file-list').children()[i].childNodes[0].appendChild(btnDownload);
+                    btnDownload.addEventListener('click', () => {download(response[key])});
+                    i++;
+                }
+
+                // All files download button
+                let btnDownloadAll = makeDownloadButton('all');
+                document.querySelector('#btn-all').appendChild(btnDownloadAll);
+                btnDownloadAll.addEventListener('click', () => {
+                    for (let key in response) {
+                        download(response[key]);
+                    }
+                });
+
+            }
+        };
+        xhr.onerror = function () {
+            stopSpinner();
+            console.log('Request failed.');
+            alertMessage('msg-failure', 8000);
+        };
+    });
+
+    // Loading animation onClick of #btn-predict
+    const spinner = document.querySelector('#progress');
+    function startSpinner() {
+        spinner.removeAttribute('hidden');
+    }
+    function stopSpinner() {
+        spinner.setAttribute('hidden', 'true');
+    }
+
+</script>
+
+{% endblock body %}

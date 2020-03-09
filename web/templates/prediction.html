@@ -1,0 +1,88 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+
+    <div class="row">
+        <div class="col-6">
+            <a href="{{ url_for('single') }}">
+                <button id="return" class="btn btn-primary btn-block">Try another image</button>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="{{ url_for('download', filename=prediction) }}">
+                <button id="return" class="btn btn-primary btn-block">Download prediction</button>
+            </a>
+        </div>
+    </div> 
+
+    <!-- Single file comparison -->
+    {% if original %}
+        <div class="row">
+            <div class="col-12" id="display-image" style="margin-top: 2%;">
+                <h3>Result</h3>
+                <div class="ba-slider">
+                    <img id="img-org" src="{{ prediction_display }}">
+                    <div class="resize">
+                        <img id="img-pred" src="{{ original }}">       
+                    </div>
+                    <span class="handle"></span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Multiple file slider -->
+    {% if zipped_list %}
+        <div id="glider-display" class="row">
+            <div class="col-12">
+                <div class="glider">
+                    {% for img in zipped_list %}
+                        <img src="{{ img }}"> 
+                    {% endfor %}
+                </div>
+            
+                <button role="button" aria-label="Previous" class="glider-prev">≪</button>
+                <button role="button" aria-label="Next" class="glider-next">≫</button>
+                <div role="tablist" class="dots"></div>
+            </div>
+        </div>
+    {% endif %}
+
+    <script>
+        makeImageZoom();
+        new Glider(document.querySelector('.glider'), {
+            // Mobile-first defaults
+            slidesToShow: 2,
+            slidesToScroll: 2,
+            scrollLock: true,
+            dots: '.dots',
+            arrows: {
+                prev: '.glider-prev',
+                next: '.glider-next'
+            },
+            responsive: [
+                {
+                // screens greater than >= 775px
+                breakpoint: 775,
+                settings: {
+                    // Set to `auto` and provide item width to adjust to viewport
+                    slidesToShow: 2,
+                    slidesToScroll: 2,
+                    itemWidth: 150,
+                    duration: 0.1
+                }
+                },{
+                // screens greater than >= 1024px
+                breakpoint: 1024,
+                settings: {
+                    slidesToShow: 2,
+                    slidesToScroll: 2,
+                    itemWidth: 150,
+                    duration: 0.1
+                }
+                }
+            ]
+        });
+    </script>
+
+{% endblock body %}

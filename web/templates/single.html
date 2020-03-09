@@ -1,0 +1,81 @@
+{% extends 'layout.html' %}
+
+
+{% block body %}
+<div class="row">
+    <div class="col-12" id="single-selection">
+        <h3>Selection</h3>
+
+        <form action="/predict_single" method="POST" enctype="multipart/form-data">
+
+            <!-- File upload -->
+            <div class="form-group-addon custom-file">
+                <label id="file-uploader-label" class="custom-file-label" for="file-uploader">Upload File</label>
+                <input id="file-uploader" name="file" class="custom-file-input form-control-file" type="file"
+                    accept=".jpg, .jpeg, .png, .tif, .tiff, .stk" onchange="fileUploaderHTML(event)" required>
+            </div>
+
+            <!-- Image selection -->
+            <div class="form-group mb-3">
+                <div class="form-group-prepend">
+                    <label class="form-group-text" for="image-type">Image Type</label>
+                </div>
+                <select id="image-type" name="image" class="custom-select" required>
+                    <option selected disabled value="">Choose...</option>
+                    {% for option in image_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Model selection -->
+            <div class="form-group mb-3">
+                <div class="form-group-prepend">
+                    <label class="form-group-text" for="model-type">Model Type</label>
+                </div>
+                <select id="model-type" name="model" class="custom-select" required>
+                    <option selected disabled value="">Choose...</option>
+                    {% for option in model_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Predict button -->
+            <button id="btn-predict" class="btn btn-light btn-block" type="submit" disabled
+                onclick="submitImage();">Predict</button>
+        </form>
+    </div>
+
+    <div class="col-12">
+        <!-- Loading information -->
+        <div hidden id="progress" class="container">
+            <div class="d-flex align-items-center">
+                <strong>Doing some fluffy calculus...</strong>
+                <div class="spinner-border ml-auto" role="status" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    // Input validation
+    ['file-uploader', 'image-type', 'model-type'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', validateSingle);
+    });
+
+    // Use cookies to pre-populate selections
+    addSelectionActive('image-type', 'image_selection');
+    addSelectionActive('model-type', 'model_selection');
+
+    // Loading animation onClick of #btn-predict
+    function submitImage() {
+        const spinner = document.getElementById('progress');
+        spinner.removeAttribute('hidden');
+    }
+
+</script>
+
+
+{% endblock body %}
