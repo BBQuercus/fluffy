@@ -91,7 +91,7 @@ def adaptive_preprocessing(image, image_type):
     image = image.squeeze()
     if not isinstance(image, np.ndarray):
         raise TypeError(f"image must be np.ndarray but is {type(image)}.")
-    if not image.ndim in [2, 3]:
+    if image.ndim not in [2, 3]:
         raise ValueError(f"image must be 2D or 3D but is {image.ndim}D.")
 
     axis = __get_min_axis(image)
@@ -209,7 +209,7 @@ def adaptive_imsave(fname, image, image_type):
     # TODO name check image_type for IMAGE_TYPES and 'Instances
     if not isinstance(image, np.ndarray):
         raise TypeError(f"Image must be np.ndarray but is {type(image)}.")
-    if not image.ndim in [2, 3]:
+    if image.ndim not in [2, 3]:
         raise ValueError(f"Image must be 2D or 3D but is {image.ndim}D.")
 
     if image_type in ["One Frame (Grayscale or RGB)", "Z-Stack", "Time-Series"]:

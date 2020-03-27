@@ -24,9 +24,9 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Versions (please complete the following information):**
- - OS: [e.g. macOS Catalina 10.15.2]
- - Browser [e.g. chrome, safari]
- - Version (Docker Tag or GitHub commit) [e.g. 22]
+ - Operating System (e.g. macOS Catalina 10.15.2):
+ - Browser [e.g. Safari 13.0.5 (15608.5.11)):
+ - Version (Docker Tag or GitHub commit):
 
 **Additional context**
 Add any other context about the problem here.

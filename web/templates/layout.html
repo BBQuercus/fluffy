@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="{{ url_for('static', filename='images/logo_transparent.png') }}">
+  <link rel="icon" href="{{ url_for('static', filename='images/logo.svg') }}">
 
   <!-- Bootstrap style -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.css') }}">
@@ -43,7 +43,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
 
       <a class="navbar-brand" href="{{ url_for('index') }}">
-        <img class="d-inline-block align-center" src="{{ url_for('static', filename='images/logo_transparent.png') }}"
+        <img class="d-inline-block align-center" src="{{ url_for('static', filename='images/logo.svg') }}"
           style="height: 100px;" alt="Logo">
         Fluffy
       </a>
@@ -80,7 +80,7 @@
   <div class="push"></div>
   <footer class="footer fixed-bottom">
     <div class="container">
-      <span class="text-muted">&copy; 2020 <a href="mailto:bastian.eichenberger@fmi.ch?subject=Regarding Fluffy..." >Bastian Th. Eichenberger</a></span>
+      <span class="text-muted">&copy; 2020 <a href="mailto:bastian.eichenberger@fmi.ch?subject=Regarding%20Fluffy...">Bastian Th. Eichenberger</a></span>
     </div>
   </footer>
   {% endif %}
