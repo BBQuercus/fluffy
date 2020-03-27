@@ -1,4 +1,4 @@
-![fluffy](./data/fluffy_header.pdf)
+![fluffy](./data/fluffy.png)
 
 Fluffy
 ==============================
