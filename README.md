@@ -116,7 +116,6 @@ Both options are described in the extensive [manual](https://github.com/bbquercu
 ### Roadmap
 
 - [x] Flask application for easy inferencing
-- [x] Fully automated metaflow pipeline for model training
+- [ ] Separate training from inference. Fluffy will only remain for inference via the flask application
 - [ ] Open sourcing of all training data and models
-- [ ] Makefile to download models
 - [ ] Addition of spot detection (in collaboration with @zhanyinx)
