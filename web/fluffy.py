@@ -54,7 +54,7 @@ log = logging.getLogger()
 ########################################
 
 
-def load_model(model_id):
+def load_model(model_id: str) -> tf.keras.models.Model:
     """ Downloads and loads models into memory from google drive h5 files. """
     import gdown
 
@@ -67,7 +67,7 @@ def load_model(model_id):
     return model
 
 
-def adaptive_imread(file):
+def adaptive_imread(file: dir) -> np.ndarray:
     """ Opens images depending on their filetype. """
     if not any(file.endswith(i) for i in ALLOWED_EXTENSIONS):
         raise ValueError(f"File must end with {ALLOWED_EXTENSIONS}")
@@ -79,10 +79,10 @@ def adaptive_imread(file):
     #     return czifile.imread(file)
 
 
-def adaptive_preprocessing(image, image_type):
+def adaptive_preprocessing(image: np.ndarray, image_type: str) -> np.ndarray:
     """ Preprocesses images according to their selected image type. """
 
-    def __get_min_axis(image):
+    def __get_min_axis(image: np.ndarray) -> int:
         """ Returns the index of a smallest axis of an image. """
         shape = image.shape
         axis = shape.index(min(shape))
@@ -107,19 +107,21 @@ def adaptive_preprocessing(image, image_type):
         return [np.take(image, i, axis=axis) for i in range(axis_len)]
 
 
-def predict_baseline(image, model, bit_depth=16):
+def predict_baseline(
+    image: np.ndarray, model: tf.keras.models.Model, bit_depth: int = 16
+):
     """
     Returns a binary or categorical model based prediction of an image.
 
     Args:
-        - image (np.ndarray): Image to be predicted.
-        - model (tf.keras.models.Model): Model used to predict the image.
-        - bit_depth (int): Bit depth to normalize images. Model dependent.
+        - image: Image to be predicted.
+        - model: Model used to predict the image.
+        - bit_depth: Bit depth to normalize images. Model dependent.
     Returns:
-        - pred (np.ndarray): Predicted image containing a probablilty map.
+        - pred: Predicted image containing a probablilty map.
     """
 
-    def __next_power(x, k=2):
+    def __next_power(x: int, k: int = 2) -> int:
         """ Calculates x's next higher power of k. """
         y, power = 0, 1
         while y < x:
@@ -140,7 +142,7 @@ def predict_baseline(image, model, bit_depth=16):
     return pred
 
 
-def add_instances(pred_mask):
+def add_instances(pred_mask: np.ndarray) -> np.ndarray:
     """
     Adds instances to a categorical prediction with three layers (background, foreground, borders).
 
@@ -170,10 +172,12 @@ def add_instances(pred_mask):
     return np.argmax(mask_new, axis=0)
 
 
-def adaptive_prediction(image, model, model_type):
+def adaptive_prediction(
+    image: np.ndarray, model: tf.keras.models.Model, model_type: str
+) -> np.ndarray:
     """
     Predicts images according to the selected model type.
-    
+
     Args:
         - image (list of np.ndarray): List of images to be predicted.
         - model (tf.keras.models.Model): Model file.
@@ -192,10 +196,10 @@ def adaptive_prediction(image, model, model_type):
     return np.array(pred).squeeze()
 
 
-def adaptive_imsave(fname, image, image_type):
+def adaptive_imsave(fname: [str, dir], image: np.ndarray, image_type: str) -> None:
     """ Saves images according to their selected image type. """
 
-    def __save_colorize(fname, image):
+    def __save_colorize(fname: [str, dir], image: np.ndarray) -> None:
         """ Colorizes images to better view labeled images. """
         import matplotlib.pyplot as plt
 
@@ -220,7 +224,9 @@ def adaptive_imsave(fname, image, image_type):
         __save_colorize(fname, image)
 
 
-def predict(file, image_type, model_type, single=False):
+def predict(
+    file: dir, image_type: str, model_type: str, single: bool = False
+) -> [str, dir]:
     """ Adaptively preprocesses, predicts, and saves images returning the filename(s). """
     log.info(
         f'Predicting with file "{file}", image "{image_type}", model {model_type}".'

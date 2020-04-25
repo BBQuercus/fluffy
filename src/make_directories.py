@@ -26,7 +26,7 @@ log = logging.getLogger()
               prompt='Folder name',
               required=True,
               help='Name of the to be generated folder.')
-def main(base_dir, name):
+def main(base_dir: dir, name: str):
     if not isinstance(base_dir, str):
         raise TypeError(f'base_dir must be str but is {type(base_dir)}')
     if not isinstance(name, str):
