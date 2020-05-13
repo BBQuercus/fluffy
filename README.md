@@ -22,7 +22,7 @@ Reproducible deep learning based segmentation of biomedical images.
 
 ### What is fluffy?
 
-Fluffy is a simple browser based tool to use custom deep learning models for biomedical image segmentation.
+Fluffy is a simple browser based tool to use custom deep learning models for biomedical image segmentation. Some example images can be seen in the `./data/` directory named browser.
 As microscopy images are usually large files, a local docker container is used.
 In comparison to a standard web server this greatly reduces file transfer and speeds everything up.
 
